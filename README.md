@@ -13,7 +13,10 @@ http://mitra.stanford.edu/kundaje/seqdataloader/labels.50PercentOverlap.tsv.gz
 
 http://mitra.stanford.edu/kundaje/seqdataloader/labels.SummitWithin200bpCenter.tsv.gz
 
-Corresponding WashU Browser Tracks with p-val bigWig signal and bin labels for the samples are here: (Coming Soon)
+Corresponding WashU Browser Tracks with optimal narrowPeak and associated bin labels are here:
+
+http://epigenomegateway.wustl.edu/legacy/?genome=hg38&session=57a1zxqQW7&statusId=1100007190
+
 
 
 
