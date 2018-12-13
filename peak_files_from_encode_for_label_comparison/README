@@ -1,0 +1,4 @@
+DNAse	GM12878	Stam	hg38	https://www.encodeproject.org/files/ENCFF073ORT/@@download/ENCFF073ORT.bed.gz
+DNAse	Hepg2	Stam	hg38	https://www.encodeproject.org/files/ENCFF209DJG/@@download/ENCFF209DJG.bed.gz
+Max	K562	Snyder	hg38	https://www.encodeproject.org/files/ENCFF618VMC/@@download/ENCFF618VMC.bed.gz
+Myc	K562	Snyder	hg38	https://www.encodeproject.org/files/ENCFF605WXD/@@download/ENCFF605WXD.bed.gz
