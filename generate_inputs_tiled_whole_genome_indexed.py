@@ -11,7 +11,7 @@ import gzip
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
 labeling_approaches={
-    "peak_summit_near_bin_center":peak_summit_near_bin_center,
+    "peak_summit_in_bin":peak_summit_in_bin,
     "peak_percent_overlap_with_bin":peak_percent_overlap_with_bin
     }
 
@@ -20,13 +20,14 @@ def parse_args():
     parser.add_argument("--task_list",help="this is a tab-separated file with the name of the task in the first column and the path to the corresponding narrowPeak(.gz) file in the second column")
     parser.add_argument("--out_bed",help="output filename that labeled bed file will be saved to.")
     parser.add_argument("--chrom_sizes",help="chromsizes file for the reference genome. First column is chrom name; second column is chrom size")
-    parser.add_argument("--stride",type=int,default=50,help="stride to shift adjacent bins by")
-    parser.add_argument("--bin_size",type=int,default=1000,help="bin length for input to model training")
-    parser.add_argument("--bin_center_size",type=int,default=200,help="flank around bin center where peak summit falls in a positivei bin")
+    parser.add_argument("--bin_stride",type=int,default=50,help="bin_stride to shift adjacent bins by")
+    parser.add_argument("--left_flank",type=int,default=400,help="left flank")
+    parser.add_argument("--right_flank",type=int,default=400,help="right flank")
+    parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positivei bin")
     parser.add_argument("--threads",type=int,default=1)
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
     parser.add_argument("--allow_ambiguous",default=False,action="store_true")
-    parser.add_argument("--labeling_approach",choices=["peak_summit_near_bin_center","peak_percent_overlap_with_bin"])    
+    parser.add_argument("--labeling_approach",choices=["peak_summit_in_bin","peak_percent_overlap_with_bin"])    
     return parser.parse_args()
 
 
@@ -62,16 +63,17 @@ def write_output_bed(args,task_names,non_zero_bins):
     print("loaded chrom_sizes")
     
     num_tasks=len(task_names)
+    seq_size=args.bin_size+args.left_flank+args.right_flank 
     #iterate through each bin in the genome 
     for index,row in chrom_sizes.iterrows():
         chrom=row[0]
         chrom_size=int(row[1])
         
         print("Writing output file entries for chrom:"+str(chrom))
-        for bin_start in range(0,chrom_size-args.bin_size,args.stride):
+        for bin_start in range(0,chrom_size-seq_size,args.bin_stride):
             
             #store the current bin as a tuple
-            bin_end=bin_start+args.bin_size
+            bin_end=bin_start+seq_size
             cur_bin=tuple([chrom,bin_start,bin_end])
             if cur_bin not in non_zero_bins:
                 
