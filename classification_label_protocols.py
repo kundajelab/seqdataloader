@@ -1,7 +1,7 @@
 from math import floor,ceil
 import pdb 
 def label_ambiguous_bins(chrom,task_name,non_zero_bins,first_overlap_seq_start,last_overlap_seq_start,seq_size,args):
-    left_ambiguous_start= first_overlap_seq_start-seq_size
+    left_ambiguous_start= first_overlap_seq_start-args.bin_stride
     left_ambiguous_end=left_ambiguous_start+seq_size
     left_ambiguous_seq=(chrom,left_ambiguous_start,left_ambiguous_end)
 
