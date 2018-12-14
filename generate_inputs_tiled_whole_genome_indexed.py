@@ -70,7 +70,7 @@ def write_output_bed(args,task_names,non_zero_bins):
         chrom_size=int(row[1])
         
         print("Writing output file entries for chrom:"+str(chrom))
-        for bin_start in range(0,chrom_size-seq_size,args.bin_stride):
+        for bin_start in range(seq_size,chrom_size-seq_size,args.bin_stride):
             
             #store the current bin as a tuple
             bin_end=bin_start+seq_size

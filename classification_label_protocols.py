@@ -32,10 +32,12 @@ def peak_summit_in_bin(task_name,task_bed,args):
     '''
     non_zero_bins=dict()
     seq_size=args.bin_size+args.left_flank+args.right_flank
+    
+    
     for entry in task_bed:
         chrom=entry[0]
         peak_start=int(entry[1])
-        summit=peak_start+int(entry[-1])
+        summit=peak_start+int(entry[-1])        
         min_bin_start=ceil((summit-args.bin_size)/args.bin_stride)*args.bin_stride
         max_bin_start=floor(summit/args.bin_stride)*args.bin_stride 
 
