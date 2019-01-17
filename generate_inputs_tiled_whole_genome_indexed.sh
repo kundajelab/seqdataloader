@@ -55,7 +55,7 @@ python generate_inputs_tiled_whole_genome_indexed.py --task_list tasks.tsv \
        --left_flank 400 \
        --right_flank 400 \
        --threads 4 \
-       --subthreads 4 \
+       --subthreads 12 \
        --allow_ambiguous \
        --overlap_thresh 0.5 \
        --labeling_approach all_genome_bins_regression

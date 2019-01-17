@@ -111,7 +111,7 @@ def one_chrom_genome_bins_regression(task_name,task_bigwig,chrom,chrom_size,seq_
     for bin_start in range(seq_size,chrom_size-seq_size,args.bin_stride):
         counter+=1
         if counter % 10000 == 0:
-            print(counter)
+            print(chrom+":"+str(bin_start))
         bin_end=bin_start+args.bin_size
         #add left and right flanks to get the sequence start and end coordinates 
         seq_start=bin_start-args.left_flank
@@ -148,6 +148,6 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,args):
     print("merging across chromosomes")
     non_zero_bins=non_zero_bins_list[0].get()
     for non_zero_bins_subdict in non_zero_bins_list[1::]:
-        non_zero_bins=non_zero_bins.update(non_zero_bins_subdict)
+        non_zero_bins.update(non_zero_bins_subdict.get())
     return non_zero_bins
 
