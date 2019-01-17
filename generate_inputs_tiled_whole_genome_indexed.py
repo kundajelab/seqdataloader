@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--right_flank",type=int,default=400,help="right flank")
     parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positivei bin")
     parser.add_argument("--threads",type=int,default=1)
-    parser.add_argument("--subthreads",type=int,default=20,help="This is only useful for regression labels for each bin in the genome. Each task-thread will generate 20 subthreads to allow for parallel processing of chromosomes. Reduce number to use fewer threads")
+    parser.add_argument("--subthreads",type=int,default=4,help="This is only useful for regression labels for each bin in the genome. Each task-thread will generate n subthreads to allow for parallel processing of chromosomes. Reduce number to use fewer threads")
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
     parser.add_argument("--allow_ambiguous",default=False,action="store_true")
     parser.add_argument("--labeling_approach",choices=["peak_summit_in_bin_classification",

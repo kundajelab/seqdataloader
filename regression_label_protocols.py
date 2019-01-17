@@ -105,8 +105,13 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,args
 
 def one_chrom_genome_bins_regression(task_name,task_bigwig,chrom,chrom_size,seq_size,args):
     #make sure we don't run off the edges of the chromosome when we add left/right flanks to the bins
-    non_zero_bins=dict() 
+    print("getting coverage from chrom:"+str(chrom))
+    non_zero_bins=dict()
+    counter=0
     for bin_start in range(seq_size,chrom_size-seq_size,args.bin_stride):
+        counter+=1
+        if counter % 10000 == 0:
+            print(counter)
         bin_end=bin_start+args.bin_size
         #add left and right flanks to get the sequence start and end coordinates 
         seq_start=bin_start-args.left_flank
@@ -136,7 +141,6 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,args):
     #iterate through each bin in the genome    
     for index,row in chrom_sizes.iterrows():
         chrom=row[0]
-        print("getting coverage from chrom:"+str(chrom))
         chrom_size=int(row[1])
         non_zero_bins_list.append(pool.apply_async(one_chrom_genome_bins_regression,args=(task_name,task_bigwig,chrom,chrom_size,seq_size,args)))
     pool.close()

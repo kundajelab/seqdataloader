@@ -48,16 +48,16 @@
 #       --labeling_approach peak_percent_overlap_with_bin_regression
 
 ##Regression Approach 3: Provide bedtools coverage in the bigWig for every bin in the genome 
-#python generate_inputs_tiled_whole_genome_indexed.py --task_list tasks.tsv \
-#       --out_bed regressionlabels.allbins.hg38.tsv.gz \
-#       --chrom_sizes hg38.chrom.sizes \
-#       --bin_stride 50 \
-#       --left_flank 400 \
-#       --right_flank 400 \
-#       --threads 4 \
-#       --subthreads 10 \
-#       --allow_ambiguous \
-#       --overlap_thresh 0.5 \
-#       --labeling_approach all_genome_bins_regression
-#
-#
+python generate_inputs_tiled_whole_genome_indexed.py --task_list tasks.tsv \
+       --out_bed regressionlabels.allbins.hg38.tsv.gz \
+       --chrom_sizes hg38.chrom.sizes \
+       --bin_stride 50 \
+       --left_flank 400 \
+       --right_flank 400 \
+       --threads 4 \
+       --subthreads 4 \
+       --allow_ambiguous \
+       --overlap_thresh 0.5 \
+       --labeling_approach all_genome_bins_regression
+
+
