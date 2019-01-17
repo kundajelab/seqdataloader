@@ -18,7 +18,7 @@ def label_ambiguous_bins(chrom,task_name,non_zero_bins,first_overlap_seq_start,l
     non_zero_bins[right_ambiguous_seq][task_name]='-1'
     return non_zero_bins
 
-def peak_summit_in_bin(task_name,task_bed,args):
+def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,args):
     '''
     For each peak, the summit position is determined. 
 
@@ -59,7 +59,7 @@ def peak_summit_in_bin(task_name,task_bed,args):
             non_zero_bins=label_ambiguous_bins(chrom,task_name,non_zero_bins,min_seq_start,max_seq_start,seq_size,args)
     return non_zero_bins
 
-def peak_percent_overlap_with_bin(task_name,task_bed,args):
+def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,args):
     '''
     50% of the central 200bp region in a 1kb bin must overlap with the peak 
     '''
