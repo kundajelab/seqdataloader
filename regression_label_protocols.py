@@ -1,9 +1,10 @@
 from math import floor,ceil
 import pandas as pd
 from multiprocessing.pool import ThreadPool
-from utils import merge_dictionaries
+from utils import merge_dictionaries, rolling_window 
+import pdb
+import numpy as np 
 
-import pdb 
 def label_ambiguous_bins_regression(chrom,task_name,non_zero_bins,min_bin_start,max_bin_start,seq_size,task_bigwig,args):
     left_ambiguous_bin_start=min_bin_start-args.bin_stride
     left_ambiguous_bin_end=left_ambiguous_bin_start+args.bin_size
@@ -102,7 +103,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,args
         if(args.allow_ambiguous==True): 
             non_zero_bins=label_ambiguous_bins_regression(chrom,task_name,non_zero_bins,min_bin_start,max_bin_start,seq_size,task_bigwig,args)
     return non_zero_bins
-
+'''
 def one_chrom_genome_bins_regression(task_name,task_bigwig,chrom,chrom_size,seq_size,args):
     #make sure we don't run off the edges of the chromosome when we add left/right flanks to the bins
     print("getting coverage from chrom:"+str(chrom))
@@ -126,6 +127,33 @@ def one_chrom_genome_bins_regression(task_name,task_bigwig,chrom,chrom_size,seq_
             non_zero_bins[cur_seq][task_name]=bin_coverage
         except:
             print("skipping:"+str(cur_seq))
+    return non_zero_bins
+'''
+def one_chrom_genome_bins_regression(task_name,task_bigwig,chrom,chrom_size,seq_size,args):
+    #Design decisions:
+    #1) Replace NaN from bigwig with 0 to avoid crashing visualizers like Washu browser
+    nbins=chrom_size//args.bin_stride
+    final_coord=nbins*args.bin_stride
+    #get the BigWig value at each position along the chromosome, (cutting off anything that extends beyond final_coord) 
+    values=task_bigwig.values(chrom,0,final_coord,numpy=True)
+    #reshape the values such that number of columns is equal to the bin_stride 
+    values=np.reshape(values,(final_coord//args.bin_stride,args.bin_stride))
+    #sum across the columns
+    strided_sums=np.sum(values,axis=1)
+    #compute rolling average for each bin
+    bin_means=np.sum(rolling_window(strided_sums,args.bin_size//args.bin_stride),-1)/args.bin_size
+    #find all bins with non-zero values 
+    non_zero_inds=np.nonzero(bin_means)[0]
+    non_zero_seq_start=non_zero_inds*args.bin_stride-args.left_flank
+    non_zero_seq_end=non_zero_seq_start+seq_size    
+    non_zero_bins=dict()
+    print("Computed bin coverage values for chromosome:"+str(chrom))
+    for i in range(non_zero_inds.shape[0]):
+        bin_index=non_zero_inds[i]
+        cur_bin_mean=bin_means[bin_index]
+        non_zero_bins[(chrom,non_zero_seq_start[i],non_zero_seq_end[i])]=dict()
+        non_zero_bins[(chrom,non_zero_seq_start[i],non_zero_seq_end[i])][task_name]=cur_bin_mean
+    print("finished chrom:"+str(chrom)+" for task:"+str(task_name))
     return non_zero_bins
 
 def all_genome_bins_regression(task_name,task_bed,task_bigwig,args):
