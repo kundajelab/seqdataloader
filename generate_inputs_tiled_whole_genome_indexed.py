@@ -41,10 +41,10 @@ def parse_args():
                                                        "all_genome_bins_regression"])    
     return parser.parse_args()
 
-def get_labels_one_task(task_name,task_bed,task_bigwig,args):
+def get_labels_one_task(task_name,task_bed,task_bigwig,chrom,first_coord,final_coord,args):
     #determine the appropriate labeling approach
-    return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,args)
-    
+    return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,chrom,first_coord,final_coord,args)
+
 
 def write_output_bed(args,task_names,non_zero_bins):
     '''
@@ -134,6 +134,61 @@ def get_nonzero_bins(args,tasks):
         non_zero_bins_dict=merge_dictionaries(non_zero_bins_dict,non_zero_bins_subdict.get())
     return task_names,non_zero_bins_dict
 
+def write_chrom_output(chrom_df,first_chrom,args):
+    index_label=['Chrom','Start','End'] 
+    if first_chrom==True:        
+        chrom_df.to_csv(args.out_bed,sep='\t',header=True,index=True,index_label=index_label,compression='gzip',mode='wb')
+    else:
+        chrom_df.to_csv(args.out_bed,sep='\t',header=False,index=True,compression='gzip',mode='ab')
+
+
+def get_indices(chrom,chrom_size,args):
+    final_bin_start=((chrom_size-args.right_flank-args.bin_size)//args.bin_stride)*args.bin_stride
+    #final_coord=(chrom_size//args.bin_stride)*args.bin_stride
+    first_bin_start=args.left_flank 
+    indices=[tuple([chrom,i-args.left_flank,i+args.bin_size+args.right_flank]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
+    return indices,first_bin_start,final_bin_start
+
+def get_chrom_labels(chrom,chrom_size,tasks,first_chrom,args):
+    #pre-allocated a pandas data frame to store bin labels for the current chromosome. Fill with zeros
+
+    #determine the index tuple values
+    index_tuples,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args) 
+    chrom_df = pd.DataFrame(0, index=index_tuples, columns=tasks[0])
+    print("pre-allocated df for chrom:"+str(chrom))
+    #store bin values from thread pool 
+    bin_values=dict() 
+    #create a thread pool to label bins, each task gets assigned a thread 
+    pool=ThreadPool(args.threads)
+    if args.allow_ambiguous==True:
+        print(' '.join(["determining positive and ambiguous bins with", str(args.threads), "threads"]))
+    else:
+        print(' '.join(["determining positive bins with",str(args.threads),"threads"]))
+    
+    for index,row in tasks.iterrows():
+        task_name=row[0]
+        #get the peak file associated with the task (if provided) 
+        try:
+            task_bed=BedTool(row[1])
+        except:
+            print("No Peak file was provided for task:"+task_name+"; Make sure this is intentional")
+            task_bed==None
+        #get the BigWig file associated with the task (if provided)
+        try:
+            task_bigwig=pyBigWig.open(row[2])
+        except:
+            print("No BigWig file was provided for task:"+task_name+"; Make sure this is intentional")
+            task_bigwig=None
+            
+        bin_values[task_name]=pool.apply_async(get_labels_one_task,args=(task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args))
+    pool.close()
+    pool.join()
+    for task_name in bin_values: 
+        chrom_df[task_name]=bin_values[task_name].get()
+    return chrom_df 
+
+    
+
 def main():
     
     #parse the input arguments
@@ -145,11 +200,27 @@ def main():
     #path to bigWig file in column 3
     tasks=pd.read_csv(args.task_list,sep='\t',header=None)
 
+    #col1: chrom name
+    #col2: chrom size 
+    chrom_sizes=pd.read_csv(args.chrom_sizes,sep='\t',header=None)
+
+    first_chrom=True
+    
+    for index,row in chrom_sizes.iterrows():
+        chrom=row[0]
+        chrom_size=row[1]
+        chrom_df=get_chrom_labels(chrom,chrom_size,tasks,first_chrom,args)
+        print("got bin labels from chromosome:"+str(chrom))
+        #write the dataframe to the output file
+        write_chrom_output(chrom_df,first_chrom,args)
+        print("wrote chrom:"+str(chrom)+" to output file")
+        first_chrom=False
+    
     #multi-threaded identification of non-zero bin labels for each task 
-    task_names,non_zero_bins_dict=get_nonzero_bins(args,tasks) 
+    #task_names,non_zero_bins_dict=get_nonzero_bins(args,tasks) 
     
     #write the output file
-    write_output_bed(args,task_names,non_zero_bins_dict)
+    #write_output_bed(args,task_names,non_zero_bins_dict)
     
 
 if __name__=="__main__":

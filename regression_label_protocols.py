@@ -11,7 +11,6 @@ def label_ambiguous_bins_regression(chrom,task_name,non_zero_bins,min_bin_start,
     left_ambiguous_seq_start=left_ambiguous_bin_start-args.left_flank
     left_ambiguous_seq_end=left_ambiguous_seq_start+seq_size 
     left_ambiguous_seq=(chrom,left_ambiguous_seq_start,left_ambiguous_seq_end)
-
     try:
         left_ambiguous_coverage=round(task_bigwig.stats(chrom,left_ambiguous_bin_start,left_ambiguous_bin_end)[0],3)
         if left_ambiguous_seq not in non_zero_bins:
@@ -103,79 +102,25 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,args
         if(args.allow_ambiguous==True): 
             non_zero_bins=label_ambiguous_bins_regression(chrom,task_name,non_zero_bins,min_bin_start,max_bin_start,seq_size,task_bigwig,args)
     return non_zero_bins
-'''
-def one_chrom_genome_bins_regression(task_name,task_bigwig,chrom,chrom_size,seq_size,args):
-    #make sure we don't run off the edges of the chromosome when we add left/right flanks to the bins
-    print("getting coverage from chrom:"+str(chrom))
-    non_zero_bins=dict()
-    counter=0
-    for bin_start in range(seq_size,chrom_size-seq_size,args.bin_stride):
-        counter+=1
-        if counter % 10000 == 0:
-            print(chrom+":"+str(bin_start))
-        bin_end=bin_start+args.bin_size
-        #add left and right flanks to get the sequence start and end coordinates 
-        seq_start=bin_start-args.left_flank
-        seq_end=bin_end+args.right_flank
-        cur_seq=(chrom,seq_start,seq_end)
 
-        #compute bigWig coverage for the bin
-        try:
-            bin_coverage=round(task_bigwig.stats(chrom,bin_start,bin_end)[0],3)                
-            #store bin coverage entry in the dictionary 
-            non_zero_bins[cur_seq]=dict()
-            non_zero_bins[cur_seq][task_name]=bin_coverage
-        except:
-            print("skipping:"+str(cur_seq))
-    return non_zero_bins
-'''
-def one_chrom_genome_bins_regression(task_name,task_bigwig,chrom,chrom_size,seq_size,args):
+def all_genome_bins_regression(task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args):
+    '''
+    compute bigWig coverage for all bins in the chromosome, regardless of whether a called peak overlaps the bin
+    '''
+    print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
     #Design decisions:
     #1) Replace NaN from bigwig with 0 to avoid crashing visualizers like Washu browser
-    nbins=chrom_size//args.bin_stride
-    final_coord=nbins*args.bin_stride
-    #get the BigWig value at each position along the chromosome, (cutting off anything that extends beyond final_coord) 
-    values=task_bigwig.values(chrom,0,final_coord,numpy=True)
+    #get the BigWig value at each position along the chromosome, (cutting off anything that extends beyond final_coord)
+    values=task_bigwig.values(chrom,first_bin_start,final_bin_start+args.bin_size,numpy=True)
+
     #reshape the values such that number of columns is equal to the bin_stride 
-    values=np.reshape(values,(final_coord//args.bin_stride,args.bin_stride))
+    values=np.reshape(values,((final_bin_start+args.bin_size-first_bin_start)//args.bin_stride,args.bin_stride))
+
     #sum across the columns
     strided_sums=np.sum(values,axis=1)
+
     #compute rolling average for each bin
     bin_means=np.sum(rolling_window(strided_sums,args.bin_size//args.bin_stride),-1)/args.bin_size
-    #find all bins with non-zero values 
-    non_zero_inds=np.nonzero(bin_means)[0]
-    non_zero_seq_start=non_zero_inds*args.bin_stride-args.left_flank
-    non_zero_seq_end=non_zero_seq_start+seq_size    
-    non_zero_bins=dict()
-    print("Computed bin coverage values for chromosome:"+str(chrom))
-    for i in range(non_zero_inds.shape[0]):
-        bin_index=non_zero_inds[i]
-        cur_bin_mean=bin_means[bin_index]
-        non_zero_bins[(chrom,non_zero_seq_start[i],non_zero_seq_end[i])]=dict()
-        non_zero_bins[(chrom,non_zero_seq_start[i],non_zero_seq_end[i])][task_name]=cur_bin_mean
-    print("finished chrom:"+str(chrom)+" for task:"+str(task_name))
-    return non_zero_bins
-
-def all_genome_bins_regression(task_name,task_bed,task_bigwig,args):
-    '''
-    compute bigWig coverage for all bins in the genome, regardless of whether a called peak overlaps the bin
-    Warning: This will take a long time! 
-    '''
-    print(task_name)
-    pool=ThreadPool(args.subthreads)
-    non_zero_bins_list=[] 
-    chrom_sizes=pd.read_table(args.chrom_sizes,header=None,sep='\t')
-    seq_size=args.bin_size+args.left_flank+args.right_flank
-    #iterate through each bin in the genome    
-    for index,row in chrom_sizes.iterrows():
-        chrom=row[0]
-        chrom_size=int(row[1])
-        non_zero_bins_list.append(pool.apply_async(one_chrom_genome_bins_regression,args=(task_name,task_bigwig,chrom,chrom_size,seq_size,args)))
-    pool.close()
-    pool.join()
-    print("merging across chromosomes")
-    non_zero_bins=non_zero_bins_list[0].get()
-    for non_zero_bins_subdict in non_zero_bins_list[1::]:
-        non_zero_bins.update(non_zero_bins_subdict.get())
-    return non_zero_bins
+    print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
+    return bin_means
 
