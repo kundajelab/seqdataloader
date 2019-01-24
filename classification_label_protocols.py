@@ -18,9 +18,7 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,chrom,first
 
     If specified in args.allow_ambiguous, then coverage is also computed in adjacent bins to the two extremes are marked as 
     ambiguous 
-    '''
-    print(task_name)
-    
+    '''    
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
     min_chrom_coord=first_bin_start-args.left_flank
     max_chrom_coord=final_bin_start+args.bin_size+args.right_flank
@@ -39,12 +37,12 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,chrom,first
         peak_end=int(entry[2])
         summit=peak_start+int(entry[-1])
         chromosome_min_bin_index=ceil((summit-args.bin_size)/args.bin_stride)
-        min_bin_start=min_bin_index*args.bin_stride
+        min_bin_start=chromosome_min_bin_index*args.bin_stride
         chromosome_max_bin_index=floor(summit/args.bin_stride)
         max_bin_start=chromosome_max_bin_index*args.bin_stride 
             
         #get mean coverage in bigwig for each bin specified above
-        index_coverage_vals=chromosome_min_index
+        index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
             coverage_vals[index_coverage_vals]=1
             index_coverage_vals+=1
@@ -63,8 +61,6 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
     '''
     50% of the central 200bp region in a 1kb bin must overlap with the peak for coverage to be computed in the provided bigWig 
     '''
-    print(task_name)
-
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
     min_chrom_coord=first_bin_start-args.left_flank
     max_chrom_coord=final_bin_start+args.bin_size+args.right_flank
