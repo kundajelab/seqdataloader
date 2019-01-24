@@ -1,7 +1,7 @@
 from math import floor,ceil
 import pandas as pd
 from multiprocessing.pool import ThreadPool
-from utils import rolling_window 
+from .utils import rolling_window 
 import pdb
 import numpy as np 
 from pybedtools import BedTool

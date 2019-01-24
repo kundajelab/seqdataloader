@@ -5,8 +5,9 @@ import pandas as pd
 import numpy as np 
 import pdb
 import csv
-from classification_label_protocols import *
-from regression_label_protocols import * 
+import sys
+from .classification_label_protocols import *
+from .regression_label_protocols import * 
 from multiprocessing.pool import ThreadPool
 import gzip 
 
@@ -30,7 +31,7 @@ def parse_args():
     parser.add_argument("--bin_stride",type=int,default=50,help="bin_stride to shift adjacent bins by")
     parser.add_argument("--left_flank",type=int,default=400,help="left flank")
     parser.add_argument("--right_flank",type=int,default=400,help="right flank")
-    parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positivei bin")
+    parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positive bin")
     parser.add_argument("--threads",type=int,default=1)
     parser.add_argument("--subthreads",type=int,default=4,help="This is only useful for regression labels for each bin in the genome. Each task-thread will generate n subthreads to allow for parallel processing of chromosomes. Reduce number to use fewer threads")
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
@@ -39,7 +40,10 @@ def parse_args():
                                                        "peak_percent_overlap_with_bin_classification",
                                                        "peak_summit_in_bin_regression",
                                                        "peak_percent_overlap_with_bin_regression",
-                                                       "all_genome_bins_regression"])    
+                                                       "all_genome_bins_regression"])
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)       
     return parser.parse_args()
 
 def get_labels_one_task(inputs):
@@ -140,6 +144,7 @@ def main():
     
     #parse the input arguments
     args=parse_args()
+        
 
     #read in the metadata file with:
     #task names in column 1,
