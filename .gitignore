@@ -1,3 +1,4 @@
+seqdataloader.egg-info/
 *.bigWig
 *.gz
 *.pyc

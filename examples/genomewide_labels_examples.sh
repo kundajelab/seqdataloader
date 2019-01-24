@@ -10,7 +10,7 @@
 ## user 21m49.384s
 ## sys 6m21.000s
 
-##python genomewide_labels.py --task_list tasks.tsv \
+##genomewide_labels --task_list tasks.tsv \
 ##       --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
 ##       --output_type gzip \
 ##       --chrom_sizes hg38.chrom.sizes \
@@ -30,7 +30,7 @@
 ## user25m23.004s
 ## sys7m58.104s
 
-#python genomewide_labels.py --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.tsv \
 #       --outf classificationlabels.50PercentOverlap.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \
@@ -49,7 +49,7 @@
 ## user 24m25.028s
 ## sys 7m58.244s
 
-#python genomewide_labels.py --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.tsv \
 #       --outf regressionlabels.SummitWithin200bpCenter.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \
@@ -68,7 +68,7 @@
 ## user25m23.004s
 ## sys7m58.104s
 
-#python genomewide_labels.py --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.tsv \
 #       --outf regressionlabels.50PercentOverlap.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \
@@ -88,7 +88,7 @@
 ## real 8m51.275s
 ## user 17m38.576s
 ## sys 6m14.768s
-#python genomewide_labels.py --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.tsv \
 #       --outf regressionlabels.allbins.hg38.hdf5 \
 #       --output_type hdf5 \
 #       --chrom_sizes hg38.chrom.sizes \
@@ -103,7 +103,7 @@
 ## real    23m10.448s
 ## user    31m55.056s
 ## sys     5m39.880s
-#python genomewide_labels.py --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.tsv \
 #       --outf regressionlabels.allbins.hg38.pkl \
 #       --output_type pkl \
 #       --chrom_sizes hg38.chrom.sizes \
@@ -124,7 +124,7 @@
 ## real 21m35.525s
 ## user 51m55.496s
 ## sys 7m49.140s
-#python genomewide_labels.py --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.tsv \
 #       --outf regressionlabels.allbins.hg38.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \

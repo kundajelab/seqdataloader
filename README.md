@@ -45,4 +45,4 @@ You may speed up i/o by writing chromosome outputs to separate files in parallel
 
 ## Documentation and benchmarks
 
-Testing, benchmarks, and documentation can be found in the `documentation` folder
+Testing, benchmarks, and documentation can be found in the `docs` folder
