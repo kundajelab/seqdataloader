@@ -25,7 +25,7 @@ def parse_args():
     parser=argparse.ArgumentParser(description="Generate genome-wide labeled bins for a set of narrowPeak task files ")
     parser.add_argument("--task_list",help="this is a tab-separated file with the name of the task in the first column, the path to the corresponding narrowPeak(.gz) file in the second column (optionally), and the path to the corresponding bigWig file in the third column (optionally, for regression)")
     parser.add_argument("--outf",help="output filename that labeled bed file will be saved to.")
-    parser.add_argument("--output_type",choices=['bed.gz','hdf5','pkl','bz2'],default='bed.gz',help="format to save output, one of bed.gz hdf5, pkl,bz2")
+    parser.add_argument("--output_type",choices=['gzip','hdf5','pkl','bz2'],default='gzip',help="format to save output, one of gzip, hdf5, pkl, bz2")
     parser.add_argument("--split_output_by_chrom",action="store_true",default=False) 
     parser.add_argument("--chrom_sizes",help="chromsizes file for the reference genome. First column is chrom name; second column is chrom size")
     parser.add_argument("--bin_stride",type=int,default=50,help="bin_stride to shift adjacent bins by")
@@ -54,7 +54,6 @@ def get_labels_one_task(inputs):
     args=inputs[6]
     #determine the appropriate labeling approach
     return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,chrom,first_coord,final_coord,args)    
-def get_indices(chrom,chrom_size,args):
     
 def get_chrom_labels(inputs):
     #unravel inputs 
@@ -84,9 +83,9 @@ def get_chrom_labels(inputs):
     for task_name,task_labels in bin_values: 
         chrom_df[task_name]=task_labels
     if args.split_output_by_chrom==True:
-        assert args.output_type=="bed.gz"
+        assert args.output_type in ["gzip","bz2"]
         index_label=['Chrom','Start','End']
-        chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=True,index_label=index_label,mode='wb',compression='gzip',chunksize=1000000) 
+        chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=True,index_label=index_label,mode='wb',compression=args.output_type,chunksize=1000000) 
     return (chrom, chrom_df)
 
 def get_bed_and_bigwig_dict(tasks):
@@ -112,14 +111,23 @@ def get_bed_and_bigwig_dict(tasks):
         bed_and_bigwig_dict[task_name]['bigwig']=task_bigwig
     return bed_and_bigwig_dict
 
+def get_indices(chrom,chrom_size,args):
+    final_bin_start=((chrom_size-args.right_flank-args.bin_size)//args.bin_stride)*args.bin_stride
+    #final_coord=(chrom_size//args.bin_stride)*args.bin_stride
+    first_bin_start=args.left_flank 
+    indices=[tuple([chrom,i-args.left_flank,i+args.bin_size+args.right_flank]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
+    return indices,first_bin_start,final_bin_start
+
+
 def write_output(task_names,full_df,args):
     '''
-    Save genome-wide labels to disk in bed.gz, hdf5, or pkl format 
+    Save genome-wide labels to disk in gzip, hdf5, or pkl format 
     '''
-    if args.output_type=="bed.gz":
+    if args.output_type=="gzip":
         index_label=['Chrom','Start','End']
         full_df.to_csv(args.outf,sep='\t',header=True,index=True,index_label=index_label,mode='wb',compression='gzip',chunksize=1000000)
     elif args.output_type=="bz2":
+        index_label=['Chrom','Start','End']
         full_df.to_csv(args.outf,sep='\t',header=True,index=True,index_label=index_label,mode='wb',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
         store=pd.HDFStore(args.outf)

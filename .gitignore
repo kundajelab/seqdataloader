@@ -1,0 +1,4 @@
+*.bigWig
+*.gz
+*.pyc
+__pycache__
