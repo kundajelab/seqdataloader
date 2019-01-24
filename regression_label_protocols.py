@@ -19,7 +19,6 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,chrom,first_bin
     If specified in args.allow_ambiguous, then coverage is also computed in adjacent bins to the two extremes are marked as 
     ambiguous 
     '''
-    print(task_name)
     
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
     min_chrom_coord=first_bin_start-args.left_flank
@@ -62,8 +61,6 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,chro
     '''
     50% of the central 200bp region in a 1kb bin must overlap with the peak for coverage to be computed in the provided bigWig 
     '''
-    print(task_name)
-
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
     min_chrom_coord=first_bin_start-args.left_flank
     max_chrom_coord=final_bin_start+args.bin_size+args.right_flank
