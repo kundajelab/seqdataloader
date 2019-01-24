@@ -24,7 +24,9 @@ labeling_approaches={
 def parse_args():
     parser=argparse.ArgumentParser(description="Generate genome-wide labeled bins for a set of narrowPeak task files ")
     parser.add_argument("--task_list",help="this is a tab-separated file with the name of the task in the first column, the path to the corresponding narrowPeak(.gz) file in the second column (optionally), and the path to the corresponding bigWig file in the third column (optionally, for regression)")
-    parser.add_argument("--out_bed",help="output filename that labeled bed file will be saved to.")
+    parser.add_argument("--outf",help="output filename that labeled bed file will be saved to.")
+    parser.add_argument("--output_type",choices=['bed.gz','hdf5','pkl'],default='bed.gz',help="format to save output, one of bed.gz hdf5, pkl")
+    parser.add_argument("--split_output_by_chrom",action="store_true",default=False) 
     parser.add_argument("--chrom_sizes",help="chromsizes file for the reference genome. First column is chrom name; second column is chrom size")
     parser.add_argument("--bin_stride",type=int,default=50,help="bin_stride to shift adjacent bins by")
     parser.add_argument("--left_flank",type=int,default=400,help="left flank")
@@ -41,7 +43,15 @@ def parse_args():
                                                        "all_genome_bins_regression"])    
     return parser.parse_args()
 
-def get_labels_one_task(task_name,task_bed,task_bigwig,chrom,first_coord,final_coord,args):
+def get_labels_one_task(inputs):
+    #unravel the inputs 
+    task_name=inputs[0]
+    task_bed=inputs[1]
+    task_bigwig=inputs[2]
+    chrom=inputs[3]
+    first_coord=inputs[4]
+    final_coord=inputs[5]
+    args=inputs[6]
     #determine the appropriate labeling approach
     return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,chrom,first_coord,final_coord,args)
 
@@ -93,7 +103,7 @@ def write_output_bed(args,task_names,non_zero_bins):
     
 def get_nonzero_bins(args,tasks):
     #parallelized bin labeling
-    pool=ThreadPool(args.threads)
+    pool=ThreadPool(args.subthreads)
     if args.allow_ambiguous==True:
         print(' '.join(["determining positive and ambiguous bins with", str(args.threads), "threads"]))
     else:
@@ -122,7 +132,7 @@ def get_nonzero_bins(args,tasks):
             task_bigwig=None
             
         #get non-zero bin labels for the current task 
-        non_zero_bins_list.append(pool.apply_async(get_labels_one_task,args=(task_name,task_bed,task_bigwig,args)))  
+        non_zero_bins_list.append(pool.apply_async(get_labels_one_task,(task_name,task_bed,task_bigwig,args)))  
     pool.close()
     pool.join()
     print("finished parsing and labeling task bed files")
@@ -134,60 +144,92 @@ def get_nonzero_bins(args,tasks):
         non_zero_bins_dict=merge_dictionaries(non_zero_bins_dict,non_zero_bins_subdict.get())
     return task_names,non_zero_bins_dict
 
-def write_chrom_output(chrom_df,first_chrom,args):
-    index_label=['Chrom','Start','End'] 
-    if first_chrom==True:        
-        chrom_df.to_csv(args.out_bed,sep='\t',header=True,index=True,index_label=index_label,compression='gzip',mode='wb')
-    else:
-        chrom_df.to_csv(args.out_bed,sep='\t',header=False,index=True,compression='gzip',mode='ab')
-
-
 def get_indices(chrom,chrom_size,args):
     final_bin_start=((chrom_size-args.right_flank-args.bin_size)//args.bin_stride)*args.bin_stride
     #final_coord=(chrom_size//args.bin_stride)*args.bin_stride
     first_bin_start=args.left_flank 
-    indices=[tuple([chrom,i-args.left_flank,i+args.bin_size+args.right_flank]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
+    indices=[chrom+'\t'+str(i-args.left_flank)+'\t'+str(i+args.bin_size+args.right_flank) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
     return indices,first_bin_start,final_bin_start
 
-def get_chrom_labels(chrom,chrom_size,tasks,first_chrom,args):
-    #pre-allocated a pandas data frame to store bin labels for the current chromosome. Fill with zeros
+def get_chrom_labels(inputs):
+    #unravel inputs 
+    chrom=inputs[0]
+    chrom_size=inputs[1]
+    bed_and_bigwig_dict=inputs[2]
+    tasks=inputs[3]
+    args=inputs[4] 
 
+    #pre-allocate a pandas data frame to store bin labels for the current chromosome. Fill with zeros    
     #determine the index tuple values
     index_tuples,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args) 
     chrom_df = pd.DataFrame(0, index=index_tuples, columns=tasks[0])
-    print("pre-allocated df for chrom:"+str(chrom))
-    #store bin values from thread pool 
-    bin_values=dict() 
+    print("pre-allocated df for chrom:"+str(chrom)+"with dimensions:"+str(chrom_df.shape))
+
     #create a thread pool to label bins, each task gets assigned a thread 
+    pool_inputs=[] 
     pool=ThreadPool(args.threads)
-    if args.allow_ambiguous==True:
-        print(' '.join(["determining positive and ambiguous bins with", str(args.threads), "threads"]))
-    else:
-        print(' '.join(["determining positive bins with",str(args.threads),"threads"]))
+    for task_name in bed_and_bigwig_dict: 
+        task_bed=bed_and_bigwig_dict[task_name]['bed']
+        task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
+        pool_inputs.append((task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args))
+    bin_values=pool.map(get_labels_one_task,pool_inputs)
+    pool.close()
+    pool.join()
     
+    for task_name,task_labels in bin_values: 
+        chrom_df[task_name]=task_labels
+    if args.split_output_by_chrom==True:
+        assert args.output_type=="bed.gz"
+        index_label=['Chrom','Start','End']
+        chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=True,index_label=index_label,mode='wb',compression='gzip',chunksize=chrom_df.shape[0]) 
+    return (chrom, chrom_df)
+
+def get_bed_and_bigwig_dict(tasks):
+    print("creating dictionary of bed files and bigwig files for each task:")
+    bed_and_bigwig_dict=dict()
     for index,row in tasks.iterrows():
         task_name=row[0]
+        print(task_name) 
+        bed_and_bigwig_dict[task_name]=dict() 
         #get the peak file associated with the task (if provided) 
         try:
             task_bed=BedTool(row[1])
         except:
             print("No Peak file was provided for task:"+task_name+"; Make sure this is intentional")
             task_bed==None
+        bed_and_bigwig_dict[task_name]['bed']=task_bed 
         #get the BigWig file associated with the task (if provided)
         try:
             task_bigwig=pyBigWig.open(row[2])
         except:
             print("No BigWig file was provided for task:"+task_name+"; Make sure this is intentional")
             task_bigwig=None
-            
-        bin_values[task_name]=pool.apply_async(get_labels_one_task,args=(task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args))
-    pool.close()
-    pool.join()
-    for task_name in bin_values: 
-        chrom_df[task_name]=bin_values[task_name].get()
-    return chrom_df 
+        bed_and_bigwig_dict[task_name]['bigwig']=task_bigwig
+    return bed_and_bigwig_dict
 
-    
+def write_output(task_names,full_df,args):
+    '''
+    Save genome-wide labels to disk in bed.gz, hdf5, or pkl format 
+    '''
+    if args.output_type=="bed.gz":
+        index_label=['Chrom','Start','End']
+        full_df.to_csv(args.outf,sep='\t',float_format="%.2f",header=True,index=True,index_label=index_label,mode='wb',compression='gzip',chunksize=full_df.shape[0]) 
+        '''
+        outf=gzip.open(args.outf,'wt')
+        header='\t'.join(['\t'.join(['Chrom','Start','End']),
+                      '\t'.join(task_names)])
+        outf.write(header+'\n')
+        for index,row in full_df.iterrows():
+            outf.write('\t'.join([str(i) for i in row])+'\n')
+        outf.close()
+        '''
+    elif args.output_type=="hdf5":
+        store=pd.HDFStore(args.outf)
+        store['df']=full_df
+        store.close()
+        
+    elif args.output_type=="pkl":
+        full_df.to_pickle(args.outf,compression="gzip")
 
 def main():
     
@@ -199,28 +241,49 @@ def main():
     #path to peak file in column 2,
     #path to bigWig file in column 3
     tasks=pd.read_csv(args.task_list,sep='\t',header=None)
+    bed_and_bigwig_dict=get_bed_and_bigwig_dict(tasks) 
 
     #col1: chrom name
     #col2: chrom size 
     chrom_sizes=pd.read_csv(args.chrom_sizes,sep='\t',header=None)
 
-    first_chrom=True
-    
+    processed_first_chrom=False
+    #create a ThreadThreadPool to process chromosomes in parallel
+    print("creating chromosome thread pool")
+    pool=ThreadPool(args.threads)
+    pool_args=[]
+    chrom_order=[] 
     for index,row in chrom_sizes.iterrows():
         chrom=row[0]
+        chrom_order.append(chrom) 
         chrom_size=row[1]
-        chrom_df=get_chrom_labels(chrom,chrom_size,tasks,first_chrom,args)
-        print("got bin labels from chromosome:"+str(chrom))
-        #write the dataframe to the output file
-        write_chrom_output(chrom_df,first_chrom,args)
-        print("wrote chrom:"+str(chrom)+" to output file")
-        first_chrom=False
-    
-    #multi-threaded identification of non-zero bin labels for each task 
-    #task_names,non_zero_bins_dict=get_nonzero_bins(args,tasks) 
-    
-    #write the output file
-    #write_output_bed(args,task_names,non_zero_bins_dict)
+        pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
+    print("launching thread pool")
+    processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
+    pool.close()
+    pool.join()
+
+    #if the user is happy with separate files for each chromosome, these have already been written to disk. We are done 
+    if args.split_output_by_chrom==True:
+        exit()
+        
+    print("expanding chromosome pool outputs") 
+    processed_chrom_outputs_dict=dict() 
+    for chrom,chrom_df in processed_chrom_outputs:
+        processed_chrom_outputs_dict[chrom]=chrom_df
+        
+    print("concatenating data frames for chromosomes")
+    for chrom in chrom_order: 
+        if processed_first_chrom==False:
+            full_df=processed_chrom_outputs_dict[chrom]
+            processed_first_chrom=True 
+        else:
+            #concatenate
+            full_df=pd.concat([full_df,processed_chrom_outputs_dict[chrom]],axis=0)
+    full_df=full_df.astype('float64',copy=False)
+    print("writing output dataframe to disk")
+    write_output(tasks[0],full_df,args)
+    print("done!") 
     
 
 if __name__=="__main__":
