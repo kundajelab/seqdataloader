@@ -8,7 +8,6 @@ import csv
 from classification_label_protocols import *
 from regression_label_protocols import * 
 from multiprocessing.pool import ThreadPool
-from utils import merge_dictionaries
 import gzip 
 
 #Approaches to determining classification labels
