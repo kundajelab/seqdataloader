@@ -7,14 +7,17 @@ Sequence data label generation and ingestion into deep learning models
 ## Quick Start
 
 tasks.tsv is a 3 column tab-delimited file
+
 Column 1 -- User-specified task name
+
 Column 2 -- path to narrowPeak file (or empty)
+
 Column 3 -- peath to bigwig file (or empty)
 
-
+```
 genomewide_labels --task_list tasks.tsv \
 		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
-		  --output_type gzip \ (one of gzip, bz2, hdf5, pkl) 
+		  --output_type gzip \ # (one of gzip, bz2, hdf5, pkl) 
 		  --chrom_sizes hg38.chrom.sizes \
 		  --bin_stride 50 \
 		  --left_flank 400 \
@@ -24,7 +27,7 @@ genomewide_labels --task_list tasks.tsv \
 		  --subthreads 4 \
 		  --allow_ambiguous \
 		  --labeling_approach peak_summit_in_bin_classification 
-
+```
 labeling_approach can be one of:
 
     "peak_summit_in_bin_classification"
