@@ -55,7 +55,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,chrom,first_bin
             coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
             index_coverage_vals+=1
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,coverage_vals
+    return task_name,np.asinh(coverage_vals)
 
 def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args):
     '''
@@ -97,7 +97,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,chro
             coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
             index_coverage_vals+=1
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,coverage_vals
+    return task_name,np.asinh(coverage_vals)
 
 def all_genome_bins_regression(task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args):
     '''
@@ -117,5 +117,5 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,chrom,first_bin_st
     #compute rolling average for each bin
     bin_means=np.sum(rolling_window(strided_sums,args.bin_size//args.bin_stride),-1)/args.bin_size
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,bin_means
+    return task_name,np.asinh(bin_means) 
 
