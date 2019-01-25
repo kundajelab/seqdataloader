@@ -33,8 +33,8 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,chrom,first
     
     for entry in chrom_task_bed:
         chrom=entry[0]
-        peak_start=int(entry[1])
-        peak_end=int(entry[2])
+        peak_start=max([int(entry[1]),min_chrom_coord])
+        peak_end=min([int(entry[2]),max_chrom_coord])
         summit=peak_start+int(entry[-1])
         chromosome_min_bin_index=ceil((summit-args.bin_size)/args.bin_stride)
         min_bin_start=chromosome_min_bin_index*args.bin_stride
@@ -74,8 +74,8 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
     
     for entry in chrom_task_bed:
         chrom=entry[0]
-        peak_start=int(entry[1])
-        peak_end=int(entry[2])
+        peak_start=max([int(entry[1]),min_chrom_coord])
+        peak_end=min([int(entry[2]),max_chrom_coord])
         min_overlap=int(round(args.overlap_thresh*args.bin_size))        
 
         #get the bin indices that overlap the peak
