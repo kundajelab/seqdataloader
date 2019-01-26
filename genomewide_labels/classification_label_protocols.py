@@ -62,7 +62,7 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,chrom,first
 
 def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args):
     '''
-    50% of the central 200bp region in a 1kb bin must overlap with the peak for coverage to be computed in the provided bigWig
+    50% of the central 200bp region in a 1kb bin must overlap with the peak for a positive label
     '''
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
     min_chrom_coord=first_bin_start-args.left_flank
