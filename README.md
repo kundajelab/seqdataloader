@@ -4,6 +4,9 @@ Sequence data label generation and ingestion into deep learning models
 ## Installation
 `pip install seqdataloader`
 
+If you plan to modify the code, you can install it in development mode: 
+`pip install -e seqdataloader` 
+
 ## Quick Start
 
 tasks.tsv is a 3 column tab-delimited file
