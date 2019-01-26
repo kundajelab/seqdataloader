@@ -44,18 +44,18 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,chrom,first
         #get mean coverage in bigwig for each bin specified above
         index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
-            if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
-                coverage_vals[index_coverage_vals]=1
-                index_coverage_vals+=1
+            #if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
+            coverage_vals[index_coverage_vals]=1
+            index_coverage_vals+=1
 
         #if allow_ambiguous supplied by user, shift 1 bin left and 1 bin right
         if args.allow_ambiguous==True:
-            if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
-                chromosome_min_bin_index-=1
-                coverage_vals[chromosome_min_bin_index]=-1
-            if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
-                chromosome_max_bin_index+=1
-                coverage_vals[chromosome_max_bin_index]=-1
+            #if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
+            chromosome_min_bin_index-=1
+            coverage_vals[chromosome_min_bin_index]=-1
+            #if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
+            chromosome_max_bin_index+=1
+            coverage_vals[chromosome_max_bin_index]=-1
 
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     return task_name,coverage_vals
@@ -90,18 +90,18 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
         #get mean coverage in bigwig for each bin specified above
         index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
-            if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
-                coverage_vals[index_coverage_vals]=1
-                index_coverage_vals+=1
+            #if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
+            coverage_vals[index_coverage_vals]=1
+            index_coverage_vals+=1
 
         #if allow_ambiguous supplied by user, shift 1 bin left and 1 bin right
         if args.allow_ambiguous==True:
-            if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
-                chromosome_min_bin_index-=1
-                coverage_vals[chromosome_min_bin_index]=-1
-            if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
-                chromosome_max_bin_index+=1
-                coverage_vals[chromosome_max_bin_index]=-1
+            #if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
+            chromosome_min_bin_index-=1
+            coverage_vals[chromosome_min_bin_index]=-1
+            #if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
+            chromosome_max_bin_index+=1
+            coverage_vals[chromosome_max_bin_index]=-1
 
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     return task_name,coverage_vals
