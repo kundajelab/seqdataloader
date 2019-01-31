@@ -11,7 +11,7 @@ config = {
     'setup_requires': [],
     'install_requires': ['numpy','pandas','cython','deeptools','pybedtools','pyBigWig'],
     'scripts': [],
-    'entry_points': {'console_scripts': ['genomewide_labels=genomewide_labels.genomewide_labels:main']},
+    'entry_points': {'console_scripts': ['genomewide_labels=genomewide_labels.__init__:main']},
     'name': 'seqdataloader'
 }
 

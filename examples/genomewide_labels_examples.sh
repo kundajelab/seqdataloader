@@ -10,19 +10,33 @@
 ## user 21m49.384s
 ## sys 6m21.000s
 
-##genomewide_labels --task_list tasks.tsv \
-##       --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
-##       --output_type gzip \
-##       --chrom_sizes hg38.chrom.sizes \
-##       --bin_stride 50 \
-##       --left_flank 400 \
-##       --right_flank 400 \
-##       --bin_size 200 \
-##       --threads 10 \
-##       --subthreads 4 \
-##       --allow_ambiguous \
-##       --labeling_approach peak_summit_in_bin_classification
-##
+#genomewide_labels --task_list tasks.tsv \
+#		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
+#		  --output_type gzip \
+#		  --chrom_sizes hg38.chrom.sizes \
+#		  --bin_stride 50 \
+#		  --left_flank 400 \
+#		  --right_flank 400 \
+#		  --bin_size 200 \
+#		  --threads 10 \
+#		  --subthreads 4 \
+#		  --allow_ambiguous \
+#		  --labeling_approach peak_summit_in_bin_classification
+
+#Example of restricting analysis to a single chromosome with --chroms_to_keep flag 
+genomewide_labels --task_list tasks.tsv \
+		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
+		  --output_type gzip \
+		  --chrom_sizes hg38.chrom.sizes \
+		  --chroms_to_keep chr21 \
+		  --bin_stride 50 \
+		  --left_flank 400 \
+		  --right_flank 400 \
+		  --bin_size 200 \
+		  --threads 10 \
+		  --subthreads 4 \
+		  --allow_ambiguous \
+		  --labeling_approach peak_summit_in_bin_classification
 
 ##Classification Approach 2: 50% Overlap Between Peak and 200 BP Bin (50% of the Smaller of the Two)
 ## Timing 
@@ -103,16 +117,16 @@
 ## real    23m10.448s
 ## user    31m55.056s
 ## sys     5m39.880s
-#genomewide_labels --task_list tasks.tsv \
-#       --outf regressionlabels.allbins.hg38.pkl \
-#       --output_type pkl \
-#       --chrom_sizes hg38.chrom.sizes \
-#       --bin_stride 50 \
-#       --left_flank 400 \
-#       --right_flank 400 \
-#       --threads 24 \
-#       --subthreads 2 \
-#       --labeling_approach all_genome_bins_regression
+genomewide_labels --task_list tasks.tsv \
+       --outf regressionlabels.allbins.hg38.pkl \
+       --output_type pkl \
+       --chrom_sizes hg38.chrom.sizes \
+       --bin_stride 50 \
+       --left_flank 400 \
+       --right_flank 400 \
+       --threads 24 \
+       --subthreads 2 \
+       --labeling_approach all_genome_bins_regression
 
 
 ## Timing for full data frame (gzip) 
