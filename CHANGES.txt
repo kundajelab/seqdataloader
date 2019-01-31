@@ -1,1 +1,2 @@
-v0.22,01/24/2019 -- Initial release.
+v0.1,01/24/2019 -- Initial release.
+v0.11,01/30/2019 -- Added flags --chroms_to_keep, --chroms_to_exclude --store_positives_only. Indices stored as strings rather than tuples for more standard bed format output.
