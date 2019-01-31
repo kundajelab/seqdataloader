@@ -163,7 +163,8 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['threads']=1
     vars(args_object)['subthreads']=4
     vars(args_object)['overlap_thresh']=0.5
-    vars(args_object)['allow_ambiguous']=True     
+    vars(args_object)['allow_ambiguous']=True
+    vars(args_object)['store_positives_only']=False
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
