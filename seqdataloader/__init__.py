@@ -71,8 +71,14 @@ def get_chrom_labels(inputs):
 
     #pre-allocate a pandas data frame to store bin labels for the current chromosome. Fill with zeros    
     #determine the index tuple values
-    index_tuples,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args) 
-    chrom_df = pd.DataFrame(0, index=index_tuples, columns=tasks[0])
+    chroms,all_start_pos,all_end_pos,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args)
+    columns=['CHR','START','END']+list(tasks[0])
+    num_entries=len(chroms.values)
+    chrom_df = pd.DataFrame(0,index=np.arange(num_entries),columns=columns)
+    chrom_df['CHR']=chroms.values
+    chrom_df['START']=all_start_pos.values
+    chrom_df['END']=all_end_pos.values 
+    
     print("pre-allocated df for chrom:"+str(chrom)+"with dimensions:"+str(chrom_df.shape))
 
     #create a thread pool to label bins, each task gets assigned a thread 
@@ -121,9 +127,17 @@ def get_indices(chrom,chrom_size,args):
     final_bin_start=((chrom_size-args.right_flank-args.bin_size)//args.bin_stride)*args.bin_stride
     #final_coord=(chrom_size//args.bin_stride)*args.bin_stride
     first_bin_start=args.left_flank
-    indices=['\t'.join([chrom,str(i-args.left_flank),str(i+args.bin_size+args.right_flank)]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
+    chroms=[]
+    start_pos=[]
+    end_pos=[]
+    for index in range(first_bin_start,final_bin_start+1,args.bin_stride):
+        chroms.append(chrom)
+        start_pos.append(index-args.left_flank)
+        end_pos.append(index+args.bin_size+args.right_flank)
+    return pd.Series(chroms),pd.Series(start_pos),pd.Series(end_pos),first_bin_start,final_bin_start 
+    #indices=['\t'.join([chrom,str(i-args.left_flank),str(i+args.bin_size+args.right_flank)]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
     #indices=[tuple([chrom,i-args.left_flank,i+args.bin_size+args.right_flank]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
-    return indices,first_bin_start,final_bin_start
+    #return indices,first_bin_start,final_bin_start
 
 
 def write_output(task_names,full_df,args,positives_passed=False,outf=None):
@@ -137,11 +151,9 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
     if outf==None:
         outf=args.outf 
     if args.output_type=="gzip":
-        index_label='\t'.join(['Chrom','Start','End'])
-        full_df.to_csv(outf,sep='\t',header=True,index=True,index_label=index_label,mode='wb',compression='gzip',chunksize=1000000)
+        full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='gzip',chunksize=1000000)
     elif args.output_type=="bz2":
-        index_label=['Chrom','Start','End']
-        full_df.to_csv(outf,sep='\t',header=True,index=True,index_label=index_label,mode='wb',compression='bz2',chunksize=1000000)
+        full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
         store=pd.HDFStore(outf)
         store['df']=full_df
@@ -228,7 +240,6 @@ def genomewide_labels(args):
         else:
             #concatenate
             full_df=pd.concat([full_df,processed_chrom_outputs_dict[chrom]],axis=0)
-    full_df=full_df.astype('float64',copy=False)
     print("writing output dataframe to disk")
     write_output(tasks[0],full_df,args)
     print("done!") 
