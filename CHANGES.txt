@@ -1,4 +1,4 @@
 v0.1,01/24/2019 -- Initial release.
 v0.11,01/30/2019 -- Added flags --chroms_to_keep, --chroms_to_exclude --store_positives_only. Indices stored as strings rather than tuples for more standard bed format output.
 v0.111,01/31/2019 -- default value of False used for flag --store_positives_only when genomewide_labels is called from python script rather than command line script. changed name of module name of genomewide_labels to seqdataloader to avoid user confusion when importing the code 
-v0.112,02/01/2019 --Updated how CHROM , START, END are stored in data frame to avoid problems with quoting in the output bed files.
+v0.113,02/01/2019 --Updated how CHROM , START, END are stored in data frame to avoid problems with quoting in the output bed files. (v.112 is skipped due to problem uploading to pypi)

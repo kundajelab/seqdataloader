@@ -6,7 +6,7 @@ config = {
     'author_email': 'annashch@stanford.edu',
     'url': 'https://github.com/kundajelab/seqdataloader',
     'description': 'Generate genome-wide classification and regression labels for DNA accessibility data.',
-    'version': '0.112',
+    'version': '0.113',
     'packages': ['seqdataloader'],
     'setup_requires': [],
     'install_requires': ['numpy','pandas','cython','deeptools','pybedtools','pyBigWig'],
