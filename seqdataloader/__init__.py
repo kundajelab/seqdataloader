@@ -146,8 +146,9 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
     '''
     if ((args.store_positives_only==True) and (positives_passed==False)):
         for task in task_names:
-            pos_task_df=pd.DataFrame(full_df[task][full_df[task]>0])
+            pos_task_df=pd.DataFrame(full_df[full_df[task]>0][['CHR','START','END',task]])
             write_output([task],pos_task_df,args,positives_passed=True,outf=task+"."+args.outf)
+        return 
     if outf==None:
         outf=args.outf 
     if args.output_type=="gzip":
