@@ -21,8 +21,8 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,chrom,first_bin
     '''
     
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
-    min_chrom_coord=first_bin_start-args.left_flank
-    max_chrom_coord=final_bin_start+args.bin_size+args.right_flank
+    min_chrom_coord=first_bin_start
+    max_chrom_coord=final_bin_start
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
@@ -34,9 +34,10 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,chrom,first_bin
     
     for entry in chrom_task_bed:
         chrom=entry[0]
-        peak_start=max([int(entry[1]),min_chrom_coord])
-        peak_end=min([int(entry[2]),max_chrom_coord])
+        peak_start=int(entry[1])
+        peak_end=int(entry[2])
         summit=peak_start+int(entry[-1])
+
         chromosome_min_bin_index=ceil((summit-args.bin_size)/args.bin_stride)
         min_bin_start=chromosome_min_bin_index*args.bin_stride
         chromosome_max_bin_index=floor(summit/args.bin_stride)
@@ -52,7 +53,8 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,chrom,first_bin
         #get mean coverage in bigwig for each bin specified above
         index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
-            coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
+            if index_coverage_vals>=0 and index_coverage_vals < num_bins: 
+                coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
             index_coverage_vals+=1
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     return task_name,np.asinh(coverage_vals)
@@ -62,8 +64,8 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,chro
     50% of the central 200bp region in a 1kb bin must overlap with the peak for coverage to be computed in the provided bigWig 
     '''
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
-    min_chrom_coord=first_bin_start-args.left_flank
-    max_chrom_coord=final_bin_start+args.bin_size+args.right_flank
+    min_chrom_coord=first_bin_start
+    max_chrom_coord=final_bin_start
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
@@ -74,8 +76,8 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,chro
     
     for entry in chrom_task_bed:
         chrom=entry[0]
-        peak_start=max([int(entry[1]),min_chrom_coord])
-        peak_end=min([int(entry[2]),max_chrom_coord])
+        peak_start=int(entry[1])
+        peak_end=int(entry[2])
         min_overlap=int(round(args.overlap_thresh*args.bin_size))        
 
         #get the bin indices that overlap the peak
@@ -94,7 +96,8 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,chro
         #get mean coverage in bigwig for each bin specified above 
         index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
-            coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
+            if index_coverage_vals>=0 and index_coverage_vals < num_bins:
+                coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
             index_coverage_vals+=1
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     return task_name,np.asinh(coverage_vals)
