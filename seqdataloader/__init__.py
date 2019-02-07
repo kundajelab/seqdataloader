@@ -156,9 +156,7 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
     elif args.output_type=="bz2":
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
-        store=pd.HDFStore(outf)
-        store['df']=full_df
-        store.close()        
+        full_df.to_hdf(outf,key="data",mode='w')
     elif args.output_type=="pkl":
         full_df.to_pickle(outf,compression="gzip")
 
