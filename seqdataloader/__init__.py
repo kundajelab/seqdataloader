@@ -156,8 +156,10 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
     elif args.output_type=="bz2":
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
-        full_df.to_hdf(outf,key="data",mode='w')
+        full_df=full_df.set_index(['CHR','START','END'])        
+        full_df.to_hdf(outf,key="data",mode='w',format='table')
     elif args.output_type=="pkl":
+        full_df=full_df.set_index(['CHR','START','END'])        
         full_df.to_pickle(outf,compression="gzip")
 
 def args_object_from_args_dict(args_dict):
