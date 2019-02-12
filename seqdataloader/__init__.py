@@ -181,8 +181,7 @@ def args_object_from_args_dict(args_dict):
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
-    args=args_object
-    
+    args=args_object    
     return args 
         
 def genomewide_labels(args):

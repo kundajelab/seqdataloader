@@ -109,11 +109,14 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,chrom,first_bin_st
     print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
 
     #get the BigWig value at each position along the chromosome, (cutting off anything that extends beyond final_coord)
-    values=task_bigwig.values(chrom,first_bin_start,final_bin_start+args.bin_size,numpy=True)
-
+    try:
+        values=task_bigwig.values(chrom,first_bin_start,final_bin_start+args.bin_size,numpy=True)
+    except:
+        raise Exception("Failing because chromosome:"+str(chrom)+" appears not to be present in the bigWig file for task:"+task_name)
+    #replace nan values with 0 
+    values=np.nan_to_num(values) 
     #reshape the values such that number of columns is equal to the bin_stride 
     values=np.reshape(values,((final_bin_start+args.bin_size-first_bin_start)//args.bin_stride,args.bin_stride))
-
     #sum across the columns
     strided_sums=np.sum(values,axis=1)
 
