@@ -120,5 +120,5 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,chrom,first_bin_st
     #compute rolling average for each bin
     bin_means=np.sum(rolling_window(strided_sums,args.bin_size//args.bin_stride),-1)/args.bin_size
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,np.asinh(bin_means) 
+    return task_name,np.arcsinh(bin_means) 
 
