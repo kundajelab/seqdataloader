@@ -22,6 +22,7 @@ regression_params={
     'outf':"regressionlabels.all_genome_bins_regression.hdf5",
     'output_type':'hdf5',
     'chrom_sizes':'hg38.chrom.sizes',
+    'store_values_above_thresh': 0,
     'chroms_to_keep':['chr21'],
     'bin_stride':50,
     'left_flank':400,

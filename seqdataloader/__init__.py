@@ -38,7 +38,8 @@ def parse_args():
     parser.add_argument("--subthreads",type=int,default=4,help="This is only useful for regression labels for each bin in the genome. Each task-thread will generate n subthreads to allow for parallel processing of chromosomes. Reduce number to use fewer threads")
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
     parser.add_argument("--allow_ambiguous",default=False,action="store_true")
-    parser.add_argument("--store_positives_only",default=False,action="store_true") 
+    parser.add_argument("--store_positives_only",default=False,action="store_true")
+    parser.add_argument("--store_values_above_thresh",default=None,type=float,help="for the regression case, determine the minimum row value to include in the output data frame (i.,e. remove bins that are 0 for all tasks by setting this to 0") 
     parser.add_argument("--labeling_approach",choices=["peak_summit_in_bin_classification",
                                                        "peak_percent_overlap_with_bin_classification",
                                                        "peak_summit_in_bin_regression",
@@ -148,7 +149,11 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
         for task in task_names:
             pos_task_df=pd.DataFrame(full_df[full_df[task]>0][['CHR','START','END',task]])
             write_output([task],pos_task_df,args,positives_passed=True,outf=task+"."+args.outf)
-        return 
+        return
+    if ((args.store_values_above_thresh !=None) and (positives_passed==False)):
+        for task in task_names:
+            pos_task_df=pd.DataFrame(full_df[full_df[task]>args.store_values_above_thresh][['CHR','START','END',task]])
+            write_output([task],pos_task_df,args,positives_passed=True,outf=task+"."+args.outf)
     if outf==None:
         outf=args.outf 
     if args.output_type=="gzip":
@@ -178,6 +183,7 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['overlap_thresh']=0.5
     vars(args_object)['allow_ambiguous']=True
     vars(args_object)['store_positives_only']=False
+    vars(args_object)['store_values_above_thresh']=None 
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
