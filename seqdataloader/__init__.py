@@ -154,6 +154,7 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
         for task in task_names:
             pos_task_df=pd.DataFrame(full_df[full_df[task]>args.store_values_above_thresh][['CHR','START','END',task]])
             write_output([task],pos_task_df,args,positives_passed=True,outf=task+"."+args.outf)
+        return
     if outf==None:
         outf=args.outf 
     if args.output_type=="gzip":
