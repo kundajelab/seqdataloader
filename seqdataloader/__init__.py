@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--task_list",help="this is a tab-separated file with the name of the task in the first column, the path to the corresponding narrowPeak(.gz) file in the second column (optionally), and the path to the corresponding bigWig file in the third column (optionally, for regression)")
     parser.add_argument("--outf",help="output filename that labeled bed file will be saved to.")
     parser.add_argument("--output_type",choices=['gzip','hdf5','pkl','bz2'],default='gzip',help="format to save output, one of gzip, hdf5, pkl, bz2")
+    parser.add_argument("--output_hdf5_format_table",action="store_true",default=False)
     parser.add_argument("--split_output_by_chrom",action="store_true",default=False) 
     parser.add_argument("--chrom_sizes",help="chromsizes file for the reference genome. First column is chrom name; second column is chrom size")
     parser.add_argument("--chroms_to_keep",nargs="+",default=None,help="list of chromosomes, as defined in the --chrom_sizes file, to include in label generation. All chromosomes will be used if this argument is not provided. This is most useful if generating a train/test/validate split for deep learning models")
@@ -162,8 +163,11 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
     elif args.output_type=="bz2":
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
-        full_df=full_df.set_index(['CHR','START','END'])        
-        full_df.to_hdf(outf,key="data",mode='w',format='table')
+        full_df=full_df.set_index(['CHR','START','END'])
+        if (args.output_hdf5_format_table==True):
+            full_df.to_hdf(outf,key="data",mode='w',format='table')
+        else:
+            full_df.to_hdf(outf,key="data",mode='w')
     elif args.output_type=="pkl":
         full_df=full_df.set_index(['CHR','START','END'])        
         full_df.to_pickle(outf,compression="gzip")
