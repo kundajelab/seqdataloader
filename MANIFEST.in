@@ -1,3 +1,16 @@
 recursive-include . *.md
 recursive-include docs *
-recursive-include examples *
+include examples/*sh
+include examples/tasks.tsv
+include examples/genomewide_labels_examples.py
+include examples/genomewide_labels_examples.sh
+include examples/hg38.chrom.sizes
+include examples/bigwig_files_from_encode_for_label_comparison/README*
+include examples/bigwig_files_from_encode_for_label_comparison/*sh
+include examples/peak_files_from_encode_for_label_comparison/README*
+
+
+
+
+
+
