@@ -6,4 +6,5 @@ v0.114,02/01/2019 --removed redundant code pass for storing positives only
 v0.115,02/01/2019 -- handled an edge case discovered by Soumya 
 v0.116,02/07/2019 -- more robus saving of data frames to output hdf5 format
 v0.117,02/17/2019 -- added minimum required versions for all dependency packages in setup.py
+v0.118,02/17/2019 -- format=table for saving to hdf5 changed as optional, non-default
 
