@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument("--task_list",help="this is a tab-separated file with the name of the task in the first column, the path to the corresponding narrowPeak(.gz) file in the second column (optionally), and the path to the corresponding bigWig file in the third column (optionally, for regression)")
     parser.add_argument("--outf",help="output filename that labeled bed file will be saved to.")
     parser.add_argument("--output_type",choices=['gzip','hdf5','pkl','bz2'],default='gzip',help="format to save output, one of gzip, hdf5, pkl, bz2")
-    parser.add_argument("--output_hdf5_format_table",action="store_true",default=False)
+    parser.add_argument("--output_hdf5_low_mem",action="store_true",default=False)
     parser.add_argument("--split_output_by_chrom",action="store_true",default=False) 
     parser.add_argument("--chrom_sizes",help="chromsizes file for the reference genome. First column is chrom name; second column is chrom size")
     parser.add_argument("--chroms_to_keep",nargs="+",default=None,help="list of chromosomes, as defined in the --chrom_sizes file, to include in label generation. All chromosomes will be used if this argument is not provided. This is most useful if generating a train/test/validate split for deep learning models")
@@ -56,12 +56,13 @@ def get_labels_one_task(inputs):
     task_name=inputs[0]
     task_bed=inputs[1]
     task_bigwig=inputs[2]
-    chrom=inputs[3]
-    first_coord=inputs[4]
-    final_coord=inputs[5]
-    args=inputs[6]
+    task_ambig=inputs[3]
+    chrom=inputs[4]
+    first_coord=inputs[5]
+    final_coord=inputs[6]
+    args=inputs[7]
     #determine the appropriate labeling approach
-    return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,chrom,first_coord,final_coord,args)    
+    return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,task_ambig,chrom,first_coord,final_coord,args)    
     
 def get_chrom_labels(inputs):
     #unravel inputs 
@@ -89,7 +90,8 @@ def get_chrom_labels(inputs):
     for task_name in bed_and_bigwig_dict: 
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
-        pool_inputs.append((task_name,task_bed,task_bigwig,chrom,first_bin_start,final_bin_start,args))
+        task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
+        pool_inputs.append((task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args))
     bin_values=pool.map(get_labels_one_task,pool_inputs)
     pool.close()
     pool.join()
@@ -123,6 +125,13 @@ def get_bed_and_bigwig_dict(tasks):
             print("No BigWig file was provided for task:"+task_name+"; Make sure this is intentional")
             task_bigwig=None
         bed_and_bigwig_dict[task_name]['bigwig']=task_bigwig
+        #get the ambiguous peaks
+        try:
+            ambig_bed=BedTool(row[3])
+        except:
+            print("No ambiguous peaks provided")
+            ambig_bed=None
+        bed_and_bigwig_dict[task_name]['ambig']=ambig_bed 
     return bed_and_bigwig_dict
 
 def get_indices(chrom,chrom_size,args):
@@ -137,9 +146,6 @@ def get_indices(chrom,chrom_size,args):
         start_pos.append(index-args.left_flank)
         end_pos.append(index+args.bin_size+args.right_flank)
     return pd.Series(chroms),pd.Series(start_pos),pd.Series(end_pos),first_bin_start,final_bin_start 
-    #indices=['\t'.join([chrom,str(i-args.left_flank),str(i+args.bin_size+args.right_flank)]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
-    #indices=[tuple([chrom,i-args.left_flank,i+args.bin_size+args.right_flank]) for i in range(first_bin_start,final_bin_start+1,args.bin_stride)]
-    #return indices,first_bin_start,final_bin_start
 
 
 def write_output(task_names,full_df,args,positives_passed=False,outf=None):
@@ -164,7 +170,7 @@ def write_output(task_names,full_df,args,positives_passed=False,outf=None):
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
         full_df=full_df.set_index(['CHR','START','END'])
-        if (args.output_hdf5_format_table==True):
+        if (args.output_hdf5_low_mem==False):
             full_df.to_hdf(outf,key="data",mode='w',format='table')
         else:
             full_df.to_hdf(outf,key="data",mode='w')
@@ -204,6 +210,7 @@ def genomewide_labels(args):
     #task names in column 1,
     #path to peak file in column 2,
     #path to bigWig file in column 3
+    #path to ambiguous peaks in column 4 (bed) 
     tasks=pd.read_csv(args.task_list,sep='\t',header=None)
     bed_and_bigwig_dict=get_bed_and_bigwig_dict(tasks) 
 
