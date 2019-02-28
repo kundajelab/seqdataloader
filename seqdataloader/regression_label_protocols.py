@@ -74,7 +74,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
             index_coverage_vals=chromosome_min_bin_index
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals>=0 and index_coverage_vals < num_bins: 
-                    coverage_vals[index_coverage_vals]=-1
+                    coverage_vals[index_coverage_vals]=np.NA
                 index_coverage_vals+=1
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     return task_name,np.arcsinh(coverage_vals)
@@ -137,7 +137,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
             index_coverage_vals=chromosome_min_bin_index
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals>=0 and index_coverage_vals < num_bins:
-                    coverage_vals[index_coverage_vals]=-1
+                    coverage_vals[index_coverage_vals]=np.NA
                 index_coverage_vals+=1        
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     return task_name,np.arcsinh(coverage_vals)
@@ -184,7 +184,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
             index_coverage_vals=chromosome_min_bin_index
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals>=0 and index_coverage_vals < num_bins: 
-                    norm_bin_means[index_coverage_vals]=-1
+                    norm_bin_means[index_coverage_vals]=np.NA
                 index_coverage_vals+=1        
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     return task_name,norm_bin_means 

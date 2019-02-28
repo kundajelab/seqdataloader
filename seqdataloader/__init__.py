@@ -195,7 +195,7 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['allow_ambiguous']=True
     vars(args_object)['store_positives_only']=False
     vars(args_object)['store_values_above_thresh']=None
-    vars(args_object)['output_hdf5_format_table']=False
+    vars(args_object)['output_hdf5_low_mem']=False
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
