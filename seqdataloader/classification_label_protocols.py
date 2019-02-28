@@ -55,10 +55,10 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
         if args.allow_ambiguous==True:
             chromosome_min_bin_index-=1
             if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
-                coverage_vals[chromosome_min_bin_index]=np.NA
+                coverage_vals[chromosome_min_bin_index]=np.nan
             chromosome_max_bin_index+=1
             if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
-                coverage_vals[chromosome_max_bin_index]=np.NA
+                coverage_vals[chromosome_max_bin_index]=np.nan
                 
     #if a bed file of ambiguous labels is specified, label them with -1
     if ((args.allow_ambiguous==True) and (chrom_ambig_bed!=None)):
@@ -77,7 +77,7 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
             index_coverage_vals=chromosome_min_bin_index
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
-                    coverage_vals[index_coverage_vals]=np.NA
+                    coverage_vals[index_coverage_vals]=np.nan
                 index_coverage_vals+=1
         
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
@@ -123,10 +123,10 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
         if args.allow_ambiguous==True:
             if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
                 chromosome_min_bin_index-=1
-                coverage_vals[chromosome_min_bin_index]=np.NA
+                coverage_vals[chromosome_min_bin_index]=np.nan
             if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
                 chromosome_max_bin_index+=1
-                coverage_vals[chromosome_max_bin_index]=np.NA
+                coverage_vals[chromosome_max_bin_index]=np.nan
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         for entry in chrom_ambig_bed:
             chrom=entry[0]
@@ -144,7 +144,7 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
             index_coverage_vals=chromosome_min_bin_index
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
-                    coverage_vals[index_coverage_vals]=np.NA
+                    coverage_vals[index_coverage_vals]=np.nan
                     index_coverage_vals+=1
         
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
