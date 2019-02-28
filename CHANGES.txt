@@ -8,5 +8,5 @@ v0.116,02/07/2019 -- more robus saving of data frames to output hdf5 format
 v0.117,02/17/2019 -- added minimum required versions for all dependency packages in setup.py
 v0.118,02/17/2019 -- format=table for saving to hdf5 changed as optional,non-default
 v0.120,02/26/2019 -- functionality to add a bed file with ambiguous regions for each task. saving as format=table in hdf5 is still optional, but now set to default, as it is desired in most cases
-
+v0.121,02/27/2019 -- ambiguous peaks labeled w/ np.nan
 
