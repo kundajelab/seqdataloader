@@ -26,6 +26,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
+    chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         chrom_ambig_bed=task_ambig.intersect(chrom_bed) 
     print("got peak subset for chrom:"+str(chrom)+" for task:"+str(task_name))
@@ -89,6 +90,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
+    chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         chrom_ambig_bed=task_ambig.intersect(chrom_bed)
         
@@ -164,6 +166,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
     bin_means=np.sum(rolling_window(strided_sums,args.bin_size//args.bin_stride),-1)/args.bin_size
     norm_bin_means=np.arcsinh(bin_means)
     #add in ambiguous bins
+    chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         min_chrom_coord=first_bin_start
         max_chrom_coord=final_bin_start

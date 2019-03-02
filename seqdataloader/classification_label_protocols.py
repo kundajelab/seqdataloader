@@ -25,6 +25,7 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
+    chrom_ambig_bed=None 
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         chrom_ambig_bed=task_ambig.intersect(chrom_bed)
     print("got peak subset for chrom:"+str(chrom)+" for task:"+str(task_name))
@@ -93,6 +94,7 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
+    chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         chrom_ambig_bed=task_ambig.intersect(chrom_bed)
     print("got peak subset for chrom:"+str(chrom)+" for task:"+str(task_name))
