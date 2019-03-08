@@ -26,7 +26,6 @@ def parse_args():
     parser.add_argument("--task_list",help="this is a tab-separated file with the name of the task in the first column, the path to the corresponding narrowPeak(.gz) file in the second column (optionally), and the path to the corresponding bigWig file in the third column (optionally, for regression)")
     parser.add_argument("--outf",help="output filename that labeled bed file will be saved to.")
     parser.add_argument("--output_type",choices=['gzip','hdf5','pkl','bz2'],default='gzip',help="format to save output, one of gzip, hdf5, pkl, bz2")
-    parser.add_argument("--output_hdf5_low_mem",action="store_true",default=False)
     parser.add_argument("--split_output_by_chrom",action="store_true",default=False) 
     parser.add_argument("--chrom_sizes",help="chromsizes file for the reference genome. First column is chrom name; second column is chrom size")
     parser.add_argument("--chroms_to_keep",nargs="+",default=None,help="list of chromosomes, as defined in the --chrom_sizes file, to include in label generation. All chromosomes will be used if this argument is not provided. This is most useful if generating a train/test/validate split for deep learning models")
@@ -148,35 +147,36 @@ def get_indices(chrom,chrom_size,args):
     return pd.Series(chroms),pd.Series(start_pos),pd.Series(end_pos),first_bin_start,final_bin_start 
 
 
-def write_output(task_names,full_df,args,positives_passed=False,outf=None):
+def write_output(task_names,full_df,args,mode='w',positives_passed=False,outf=None):
     '''
     Save genome-wide labels to disk in gzip, hdf5, or pkl format 
     '''
     if ((args.store_positives_only==True) and (positives_passed==False)):
         for task in task_names:
             pos_task_df=pd.DataFrame(full_df[full_df[task]>0][['CHR','START','END',task]])
-            write_output([task],pos_task_df,args,positives_passed=True,outf=task+"."+args.outf)
+            write_output([task],pos_task_df,args,mode=mode,positives_passed=True,outf=task+"."+args.outf)
         return
     if ((args.store_values_above_thresh !=None) and (positives_passed==False)):
         for task in task_names:
             pos_task_df=pd.DataFrame(full_df[full_df[task]>args.store_values_above_thresh][['CHR','START','END',task]])
-            write_output([task],pos_task_df,args,positives_passed=True,outf=task+"."+args.outf)
+            write_output([task],pos_task_df,args,mode=mode,positives_passed=True,outf=task+"."+args.outf)
         return
     if outf==None:
         outf=args.outf 
     if args.output_type=="gzip":
-        full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='gzip',chunksize=1000000)
+        full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
     elif args.output_type=="bz2":
-        full_df.to_csv(outf,sep='\t',header=True,index=False,mode='wb',compression='bz2',chunksize=1000000)
+        full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
         full_df=full_df.set_index(['CHR','START','END'])
-        if (args.output_hdf5_low_mem==False):
-            full_df.to_hdf(outf,key="data",mode='w',format='table')
+        if mode=='w':
+            append=False
         else:
-            full_df.to_hdf(outf,key="data",mode='w')
+            append=True
+        full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':10})
     elif args.output_type=="pkl":
         full_df=full_df.set_index(['CHR','START','END'])        
-        full_df.to_pickle(outf,compression="gzip")
+        full_df.to_pickle(task+"."+outf,compression="gzip")
 
 def args_object_from_args_dict(args_dict):
     #create an argparse.Namespace from the dictionary of inputs
@@ -245,24 +245,13 @@ def genomewide_labels(args):
     #if the user is happy with separate files for each chromosome, these have already been written to disk. We are done 
     if args.split_output_by_chrom==True:
         exit()
-        
-    print("expanding chromosome pool outputs") 
-    processed_chrom_outputs_dict=dict() 
-    for chrom,chrom_df in processed_chrom_outputs:
-        processed_chrom_outputs_dict[chrom]=chrom_df
-        
-    print("concatenating data frames for chromosomes")
-    for chrom in chrom_order: 
-        if processed_first_chrom==False:
-            full_df=processed_chrom_outputs_dict[chrom]
-            processed_first_chrom=True 
-        else:
-            #concatenate
-            full_df=pd.concat([full_df,processed_chrom_outputs_dict[chrom]],axis=0)
-    print("writing output dataframe to disk")
-    write_output(tasks[0],full_df,args)
+    mode='w'
+    for chrom, chrom_df in processed_chrom_outputs:
+        #write to output file!
+        print("writing output chromosomes:"+str(chrom))
+        write_output(tasks[0],chrom_df,args,mode=mode)
+        mode='a'
     print("done!") 
-
 def main():
     args=parse_args()     
     genomewide_labels(args)
