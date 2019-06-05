@@ -24,6 +24,7 @@ labeling_approaches={
 def parse_args():
     parser=argparse.ArgumentParser(description="Generate genome-wide labeled bins for a set of narrowPeak task files ")
     parser.add_argument("--task_list",help="this is a tab-separated file with the name of the task in the first column, the path to the corresponding narrowPeak(.gz) file in the second column (optionally), and the path to the corresponding bigWig file in the third column (optionally, for regression)")
+    parser.add_argument("--task_list_sep",default='\t')
     parser.add_argument("--outf",help="output filename that labeled bed file will be saved to.")
     parser.add_argument("--output_type",choices=['gzip','hdf5','pkl','bz2'],default='gzip',help="format to save output, one of gzip, hdf5, pkl, bz2")
     parser.add_argument("--split_output_by_chrom",action="store_true",default=False) 
@@ -211,7 +212,7 @@ def genomewide_labels(args):
     #path to peak file in column 2,
     #path to bigWig file in column 3
     #path to ambiguous peaks in column 4 (bed) 
-    tasks=pd.read_csv(args.task_list,sep='\t',header=None)
+    tasks=pd.read_csv(args.task_list,sep=args.task_list_sep,header=None)
     bed_and_bigwig_dict=get_bed_and_bigwig_dict(tasks) 
 
     #col1: chrom name
