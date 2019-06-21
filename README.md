@@ -13,11 +13,12 @@ tasks.tsv is a 4 column tab-delimited file
 
 Column 1 -- User-specified task name
 
-Column 2 -- path to narrowPeak file (optional)
+Column 2 -- path to narrowPeak file (optional if Column 3 is specified)
 
-Column 3 -- peath to bigwig file (optional)
+Column 3 -- path to bigwig file (optional if Column 2 is specified)
 
 Column 4 -- bed file containing user-specified regions to label as ambiguous (i.e. "blacklist")
+
 ```
 genomewide_labels --task_list tasks.tsv \
 		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
