@@ -9,7 +9,7 @@ If you plan to modify the code, you can install it in development mode:
 
 ## Quick Start
 
-tasks.tsv is a 3 column tab-delimited file
+tasks.tsv is a 4 column tab-delimited file
 
 Column 1 -- User-specified task name
 
