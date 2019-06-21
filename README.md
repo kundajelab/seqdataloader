@@ -17,7 +17,7 @@ Column 2 -- path to narrowPeak file (optional)
 
 Column 3 -- peath to bigwig file (optional)
 
-Column 4 -- blacklist of regions to exclude from labeling (optional)
+Column 4 -- bed file containing user-specified regions to label as ambiguous (i.e. "blacklist")
 ```
 genomewide_labels --task_list tasks.tsv \
 		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
