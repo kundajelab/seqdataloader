@@ -48,6 +48,7 @@ labeling_approach can be one of:
 ## How to run 
 Sample datasets are included in the folder `examples/peak_files_from_encode_for_label_comparison` and `examples/bigwig_files_from_encode_for_label_comparison`
 
+### Executing seqdataloader as a script: 
 Execute the script:
 
 `examples/genomewide_labels.sh` for examples on how to generate classification and regression labels on sample datasets.
@@ -63,6 +64,45 @@ http://mitra.stanford.edu/kundaje/seqdataloader/regressionlabels.SummitWithin200
 
 Corresponding WashU Browser Tracks with optimal narrowPeak and associated bin labels are here:
 http://epigenomegateway.wustl.edu/legacy/?genome=hg38&session=GDB2BTMGnB&statusId=1154897038
+
+### calling seqdataloader as a Python function: 
+```
+from seqdataloader import *
+classification_params={
+    'task_list':"tasks.tsv",
+    'outf':"classificationlabels.SummitWithin200bpCenter.tsv.gz",
+    'output_type':'gzip',
+    'chrom_sizes':'hg38.chrom.sizes',
+    'chroms_to_keep':['chr21'],
+    "store_positives_only":True,
+    'bin_stride':50,
+    'left_flank':400,
+    'right_flank':400,
+    'bin_size':200,
+    'threads':10,
+    'subthreads':4,
+    'allow_ambiguous':True,
+    'labeling_approach':'peak_summit_in_bin_classification'
+    }
+genomewide_labels(classification_params)
+
+regression_params={
+    'task_list':"tasks.tsv",
+    'outf':"regressionlabels.all_genome_bins_regression.hdf5",
+    'output_type':'hdf5',
+    'chrom_sizes':'hg38.chrom.sizes',
+    'store_values_above_thresh': 0,
+    'chroms_to_keep':['chr21'],
+    'bin_stride':50,
+    'left_flank':400,
+    'right_flank':400,
+    'bin_size':200,
+    'threads':10,
+    'subthreads':4,
+    'labeling_approach':'all_genome_bins_regression'
+    }
+genomewide_labels(regression_params)
+```
 
 
 ## Dependencies
