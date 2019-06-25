@@ -35,8 +35,8 @@ def parse_args():
     parser.add_argument("--left_flank",type=int,default=400,help="left flank")
     parser.add_argument("--right_flank",type=int,default=400,help="right flank")
     parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positive bin")
-    parser.add_argument("--threads",type=int,default=1)
-    parser.add_argument("--subthreads",type=int,default=4,help="This is only useful for regression labels for each bin in the genome. Each task-thread will generate n subthreads to allow for parallel processing of chromosomes. Reduce number to use fewer threads")
+    parser.add_argument("--threads",type=int,default=4,help="Number of chromosomes to process at once.")
+    parser.add_argument("--subthreads",type=int,default=1,help="Number of tasks to process at once for a given chromosome")
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
     parser.add_argument("--allow_ambiguous",default=False,action="store_true")
     parser.add_argument("--store_positives_only",default=False,action="store_true")
@@ -86,7 +86,7 @@ def get_chrom_labels(inputs):
 
     #create a thread pool to label bins, each task gets assigned a thread 
     pool_inputs=[] 
-    pool=ThreadPool(args.threads)
+    pool=ThreadPool(args.subthreads)
     for task_name in bed_and_bigwig_dict: 
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
