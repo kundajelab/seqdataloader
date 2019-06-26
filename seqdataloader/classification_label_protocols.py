@@ -22,10 +22,13 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
+    if min_chrom_coord >= max_chrom_coord:
+        print("the chromosome"+chrom+" is too short for the specified settings of --left_flank, --right_flank, --bin_size, skipping")
+        return task_name,None
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
-    chrom_ambig_bed=None 
+    chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         chrom_ambig_bed=task_ambig.intersect(chrom_bed)
     print("got peak subset for chrom:"+str(chrom)+" for task:"+str(task_name))
@@ -91,6 +94,9 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
+    if min_chrom_coord >= max_chrom_coord:
+        print("the chromosome"+chrom+" is too short for the specified settings of --left_flank, --right_flank, --bin_size, skipping")
+        return task_name, None
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)

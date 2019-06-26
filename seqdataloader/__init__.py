@@ -96,7 +96,9 @@ def get_chrom_labels(inputs):
     pool.close()
     pool.join()
     
-    for task_name,task_labels in bin_values: 
+    for task_name,task_labels in bin_values:
+        if task_labels is None:
+            continue
         chrom_df[task_name]=task_labels
     if args.split_output_by_chrom==True:
         assert args.output_type in ["gzip","bz2"]
