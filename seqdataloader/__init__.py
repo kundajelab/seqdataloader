@@ -176,7 +176,7 @@ def write_output(task_names,full_df,args,mode='w',positives_passed=False,outf=No
             append=False
         else:
             append=True
-        full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':10})
+        full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
     elif args.output_type=="pkl":
         full_df=full_df.set_index(['CHR','START','END'])        
         full_df.to_pickle(task+"."+outf,compression="gzip")
