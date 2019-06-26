@@ -74,7 +74,10 @@ def get_chrom_labels(inputs):
 
     #pre-allocate a pandas data frame to store bin labels for the current chromosome. Fill with zeros    
     #determine the index tuple values
-    chroms,all_start_pos,all_end_pos,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args)
+    try:
+        chroms,all_start_pos,all_end_pos,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args)
+    except:
+        return (chrom,None)
     columns=['CHR','START','END']+list(tasks[0])
     num_entries=len(chroms.values)
     chrom_df = pd.DataFrame(0,index=np.arange(num_entries),columns=columns)
@@ -140,6 +143,9 @@ def get_indices(chrom,chrom_size,args):
     final_bin_start=((chrom_size-args.right_flank-args.bin_size)//args.bin_stride)*args.bin_stride
     #final_coord=(chrom_size//args.bin_stride)*args.bin_stride
     first_bin_start=args.left_flank
+    if final_bin_start<=first_bin_start:
+        print("the chromosome"+chrom+" is too short for the specified settings of --left_flank, --right_flank, --bin_size, skipping")
+        return None 
     chroms=[]
     start_pos=[]
     end_pos=[]
@@ -251,10 +257,13 @@ def genomewide_labels(args):
     mode='w'
     for chrom, chrom_df in processed_chrom_outputs:
         #write to output file!
+        if chrom_df is None:
+            continue 
         print("writing output chromosomes:"+str(chrom))
         write_output(tasks[0],chrom_df,args,mode=mode)
         mode='a'
-    print("done!") 
+    print("done!")
+    
 def main():
     args=parse_args()     
     genomewide_labels(args)
