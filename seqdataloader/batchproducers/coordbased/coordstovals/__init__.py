@@ -1,4 +1,4 @@
 from __future__ import division, print_function, absolute_import
-import .bigwig
-import .fasta
-import .core
+from . import bigwig
+from . import fasta
+from . import core
