@@ -123,18 +123,18 @@ def rolling_window(a, window):
 def smooth(profile_array, smoothing_windows):
     smoothed_profiles = []
     for smoothing_window in smoothing_windows:
-      strided_profile = rolling_window(a=profile_array,
+        strided_profile = rolling_window(a=profile_array,
                                              window=smoothing_window)
-      smoothed_profile_nopad = np.mean(strided_profile, axis=-1)
-      leftpadlen = int((smoothing_window-1)/2)
-      rightpadlen =\
+        smoothed_profile_nopad = np.mean(strided_profile, axis=-1)
+        leftpadlen = int((smoothing_window-1)/2)
+        rightpadlen =\
                 (smoothing_window-1)-int((smoothing_window-1)/2)
-      padded_profile = np.pad(
+        padded_profile = np.pad(
                 array=smoothed_profile_nopad,
                 pad_width=((0,0),(leftpadlen, rightpadlen)),
                 mode='constant')
-      smoothed_profiles.append(padded_profile[:,:,None])
-  return smoothed_profiles
+        smoothed_profiles.append(padded_profile[:,:,None])
+    return smoothed_profiles
     
 
 class PosAndNegSmoothWindowCollapsedLogCounts(
