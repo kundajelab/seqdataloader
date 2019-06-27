@@ -1,5 +1,5 @@
 from __future__ import division, print_function, absolute_import
-import .coordstovals
-import .coordbatchproducers
-import .coordbatchtransformers
-import .core
+from . import coordstovals
+from . import coordbatchproducers
+from . import coordbatchtransformers
+from . import core

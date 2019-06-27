@@ -1,5 +1,5 @@
 from __future__ import division, print_function, absolute_import
-import .batchproducers
+from . import batchproducers
 import argparse
 from pybedtools import BedTool
 import pyBigWig 
