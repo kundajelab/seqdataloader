@@ -1,4 +1,4 @@
-from __future__ import division, print_function, absolute import
+from __future__ import division, print_function, absolute_import
 import .batchproducers
 import argparse
 from pybedtools import BedTool
