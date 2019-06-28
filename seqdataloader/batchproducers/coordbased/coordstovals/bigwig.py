@@ -93,8 +93,8 @@ class AbstractPosAndNegStrandCountsAndProfile(CoordsToVals):
             else:
                 pos_profile_values.append(second_strand)
                 neg_profile_values.append(first_strand)
-        pos_profile_values = np.array(pos_strand_profile_values)
-        neg_profile_values = np.array(neg_strand_profile_values)        
+        pos_profile_values = np.array(pos_profile_values)
+        neg_profile_values = np.array(neg_profile_values)        
         pos_counts = np.sum(pos_profile_values, axis=-1)
         neg_counts = np.sum(neg_profile_values, axis=-1)
         return (pos_counts, neg_counts, pos_profile_values, neg_profile_values)
