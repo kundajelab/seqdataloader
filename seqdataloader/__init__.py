@@ -29,7 +29,8 @@ def parse_args():
     parser.add_argument("--task_list_sep",default='\t')
     parser.add_argument("--outf",help="output filename that labeled bed file will be saved to.")
     parser.add_argument("--output_type",choices=['gzip','hdf5','pkl','bz2'],default='gzip',help="format to save output, one of gzip, hdf5, pkl, bz2")
-    parser.add_argument("--split_output_by_chrom",action="store_true",default=False) 
+    parser.add_argument("--split_output_by_chrom",action="store_true",default=False)
+    parser.add_argument("--split_output_by_task",action="store_true",default=False,help="creates a separate output file for each task's labels")
     parser.add_argument("--chrom_sizes",help="chromsizes file for the reference genome. First column is chrom name; second column is chrom size")
     parser.add_argument("--chroms_to_keep",nargs="+",default=None,help="list of chromosomes, as defined in the --chrom_sizes file, to include in label generation. All chromosomes will be used if this argument is not provided. This is most useful if generating a train/test/validate split for deep learning models")
     parser.add_argument("--chroms_to_exclude",nargs="+",default=None,help="list of chromosomes, as defined in the --chrom_sizes file, to exclude in label generation. No chromosomes will be excluded if this argument is not provided. This is most useful if generating a train/test/validate split for deep learning models")
@@ -122,22 +123,31 @@ def get_bed_and_bigwig_dict(tasks):
         try:
             task_bed=BedTool(row[1])
         except:
-            print("No Peak file was provided for task:"+task_name+"; Make sure this is intentional")
-            task_bed==None
+            if pd.isna(row[1]):
+                print("No Peak file was provided for task:"+task_name+"; Make sure this is intentional")
+                task_bed==None
+            else:
+                raise Exception("Could not parse:"+str(row[1]))
         bed_and_bigwig_dict[task_name]['bed']=task_bed 
         #get the BigWig file associated with the task (if provided)
         try:
             task_bigwig=pyBigWig.open(row[2])
         except:
-            print("No BigWig file was provided for task:"+task_name+"; Make sure this is intentional")
-            task_bigwig=None
+            if pd.isna(row[2]):
+                print("No BigWig file was provided for task:"+task_name+"; Make sure this is intentional")
+                task_bigwig=None
+            else:
+                raise Exception("Could not parse:"+str(row[2]))
         bed_and_bigwig_dict[task_name]['bigwig']=task_bigwig
         #get the ambiguous peaks
         try:
             ambig_bed=BedTool(row[3])
         except:
-            print("No ambiguous peaks provided")
-            ambig_bed=None
+            if pd.isna(row[3]):
+                print("No ambiguous peaks provided")
+                ambig_bed=None
+            else:
+                raise Exception("Could not parse:"+str(row[3]))
         bed_and_bigwig_dict[task_name]['ambig']=ambig_bed 
     return bed_and_bigwig_dict
 
@@ -158,22 +168,22 @@ def get_indices(chrom,chrom_size,args):
     return pd.Series(chroms),pd.Series(start_pos),pd.Series(end_pos),first_bin_start,final_bin_start 
 
 
-def write_output(task_names,full_df,args,mode='w',positives_passed=False,outf=None):
+def write_output(task_names,full_df,args,mode='w',task_split_engaged=False,outf=None):
     '''
     Save genome-wide labels to disk in gzip, hdf5, or pkl format 
     '''
-    if ((args.store_positives_only==True) and (positives_passed==False)):
+    if (args.split_output_by_task==True):
         for task in task_names:
-            pos_task_df=pd.DataFrame(full_df[full_df[task]>0][['CHR','START','END',task]])
-            write_output([task],pos_task_df,args,mode=mode,positives_passed=True,outf=task+"."+args.outf)
-        return
-    if ((args.store_values_above_thresh !=None) and (positives_passed==False)):
-        for task in task_names:
-            pos_task_df=pd.DataFrame(full_df[full_df[task]>args.store_values_above_thresh][['CHR','START','END',task]])
-            write_output([task],pos_task_df,args,mode=mode,positives_passed=True,outf=task+"."+args.outf)
+            task_df=full_df['CHR','START','END',task]
+            write_output([task],task_df,args,mode=mode,task_split_engaged=True,outf=task.replace('/','.')+"."+args.outf)
         return
     if outf==None:
-        outf=args.outf 
+        outf=args.outf
+    if args.store_positives_only==True:
+        #find regions with at least one positive entry per task
+        full_df=full_df[(full_df[task_names]>0).any(1)]
+    if args.store_values_above_thresh is not None:
+        full_df=full_df[(full_df[task_names]>args.store_values_above_thresh).any(1)]
     if args.output_type=="gzip":
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
     elif args.output_type=="bz2":
@@ -194,6 +204,7 @@ def args_object_from_args_dict(args_dict):
     args_object=argparse.Namespace()
     #set the defaults
     vars(args_object)['split_output_by_chrom']=False
+    vars(args_object)['split_output_by_task']=False
     vars(args_object)['chroms_to_keep']=None
     vars(args_object)['chroms_to_exclude']=None
     vars(args_object)['bin_stride']=50
