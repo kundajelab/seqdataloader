@@ -179,15 +179,23 @@ def write_output(task_names,full_df,args,mode='w',task_split_engaged=False,outf=
         return
     if outf==None:
         outf=args.outf
+        
+    all_negative_df=None
     if args.store_positives_only==True:
         #find regions with at least one positive entry per task
+        all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]==0).all(1)]
         full_df=full_df[(full_df[task_names]>0).any(1)]
     if args.store_values_above_thresh is not None:
-        full_df=full_df[(full_df[task_names]>args.store_values_above_thresh).any(1)]
+        all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]<args.store_values_above_thresh).all(1)]
+        full_df=full_df[(full_df[task_names]>=args.store_values_above_thresh).any(1)]
     if args.output_type=="gzip":
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
+        if all_negative_df is not None:
+            all_negative_df.to_csv(outf+".universal_negatives",sep='\t',header=True,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
     elif args.output_type=="bz2":
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
+        if all_negative_df is not None:
+            all_negative_df.to_csv(outf+".universal_negatives",sep='\t',header=True,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
         full_df=full_df.set_index(['CHR','START','END'])
         if mode=='w':
@@ -195,9 +203,13 @@ def write_output(task_names,full_df,args,mode='w',task_split_engaged=False,outf=
         else:
             append=True
         full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
+        if all_negative_df is not None:
+            all_negative_df.to_hdf(outf+".universal_negatives",key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
     elif args.output_type=="pkl":
         full_df=full_df.set_index(['CHR','START','END'])        
-        full_df.to_pickle(task+"."+outf,compression="gzip")
+        full_df.to_pickle(outf,compression="gzip")
+        if all_negative_df is not None:
+            all_negative_df.to_pickle(outf+".universal_negatives",compression="gzip")
 
 def args_object_from_args_dict(args_dict):
     #create an argparse.Namespace from the dictionary of inputs
