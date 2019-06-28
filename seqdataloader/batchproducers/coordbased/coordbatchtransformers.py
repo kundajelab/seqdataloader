@@ -23,7 +23,7 @@ class ReverseComplementAugmenter(AbstractCoordBatchTransformer):
     """
         Returns a list of Coordinates twice the length of the
             original list by appending the reverse complements
-            of the original coordinates appended at the end
+            of the original coordinates at the end
     """
     def __call__(self, coords):
         return coords + [x.get_revcomp() for x in coords]
@@ -34,7 +34,8 @@ class UniformJitter(AbstractCoordBatchTransformer):
     def __init__(self, maxshift, seed=1234, chromsizes_file=None):
         """
           Returns a list of Coordinates jittered relative to the original
-            coordinates by a shift of up to +/- maxshift
+            coordinates by a shift of up to +/- maxshift. Size of the
+            shift is sampled from a uniform distribution.
             
           Args:
             maxshift (:obj:`int`): maximum possible shift to sample
