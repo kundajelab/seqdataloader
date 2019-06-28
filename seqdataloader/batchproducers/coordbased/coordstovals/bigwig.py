@@ -69,7 +69,7 @@ class AbstractPosAndNegStrandCountsAndProfile(CoordsToVals):
     def _get_pos_and_neg_counts_and_vals(self, coors):
         new_coors = []
         for coor in coors:
-            coor_center = int(0.5*(coors.start + coors.end))
+            coor_center = int(0.5*(coor.start + coor.end))
             left_flank = int(0.5*self.center_size_to_use)
             right_flank = self.center_size_to_use - left_flank
             new_start = coor_center-left_flank
