@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import pyBigWig
 from .core import CoordsToVals
+from ..core import Coordinates
 
 
 class BigWigReader(object):
@@ -66,15 +67,20 @@ class AbstractPosAndNegStrandCountsAndProfile(CoordsToVals):
         self.center_size_to_use = center_size_to_use
         
     def _get_pos_and_neg_counts_and_vals(self, coors):
-        pos_profile_values = self.pos_strand_reader.read_values(coors=coors)
+        new_coors = []
+        for coor in coors:
+            coor_center = int(0.5*(coors.start + coors.end))
+            left_flank = int(0.5*self.center_size_to_use)
+            right_flank = self.center_size_to_use - left_flank
+            new_start = coor_center-left_flank
+            new_end = coor_center+right_flank
+            new_coors.append(Coordinates(chrom=coor.chrom,
+                                         start=new_start, end=new_end,
+                                         isplusstrand=coor.isplusstrand))
+        pos_profile_values = self.pos_strand_reader.read_values(
+                                  coors=new_coors)
         neg_profile_values = np.abs(
-            self.neg_strand_reader.read_values(coors=coors))
-        orig_len = pos_profile_values.shape[1]
-        left_start = int(orig_len/2) - int(self.center_size_to_use/2)
-        right_end = int(orig_len/2) + (self.center_size_to_use
-                                       - int(self.center_size_to_use/2))
-        pos_profile_values = pos_profile_values[:, left_start:right_end]
-        neg_profile_values = neg_profile_values[:, left_start:right_end]
+            self.neg_strand_reader.read_values(coors=new_coors))
         pos_counts = np.sum(pos_profile_values, axis=-1)
         neg_counts = np.sum(neg_profile_values, axis=-1)
         return (pos_counts, neg_counts, pos_profile_values, neg_profile_values)
