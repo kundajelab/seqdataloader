@@ -20,14 +20,28 @@ class AbstractCoordBatchTransformer(object):
       
       
 class ReverseComplementAugmenter(AbstractCoordBatchTransformer):
-    
+    """
+        Returns a list of Coordinates twice the length of the
+            original list by appending the reverse complements
+            of the original coordinates appended at the end
+    """
     def __call__(self, coords):
         return coords + [x.get_revcomp() for x in coords]
       
       
 class UniformJitter(AbstractCoordBatchTransformer):
-  
+    
     def __init__(self, maxshift, seed=1234, chromsizes_file=None):
+        """
+          Returns a list of Coordinates jittered relative to the original
+            coordinates by a shift of up to +/- maxshift
+            
+          Args:
+            maxshift (:obj:`int`): maximum possible shift to sample
+            chromsizes (:obj:`string`): path to a chromsizes file. If
+                specified, shifts will be adjusted so as to avoid going
+                over the end of the chromosome. Default is None.
+        """
         self.rng = np.random.RandomState(seed)
         self.maxshift = maxshift
         self.chromsizes = (
