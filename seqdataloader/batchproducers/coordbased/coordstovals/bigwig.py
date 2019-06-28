@@ -81,20 +81,20 @@ class AbstractPosAndNegStrandCountsAndProfile(CoordsToVals):
                                   coors=new_coors)
         second_strand_profile_values = np.abs(
             self.neg_strand_reader.read_values(coors=new_coors))
-        pos_strand_profile_values = []
-        neg_strand_profile_values = []
+        pos_profile_values = []
+        neg_profile_values = []
         #need to swap the pos and neg strands if the strand is negative
         for (first_strand, second_strand, coor) in zip(first_strand_profile_values,
                                                        second_strand_profile_values,
                                                        coors):
             if (coor.isplusstrand==True):
-                pos_strand_profile_values.append(first_strand)
-                neg_strand_profile_values.append(second_strand)
+                pos_profile_values.append(first_strand)
+                neg_profile_values.append(second_strand)
             else:
-                pos_strand_profile_values.append(second_strand)
-                neg_strand_profile_values.append(first_strand)
-        pos_strand_profile_values = np.array(pos_strand_profile_values)
-        neg_strand_profile_values = np.array(neg_strand_profile_values)        
+                pos_profile_values.append(second_strand)
+                neg_profile_values.append(first_strand)
+        pos_profile_values = np.array(pos_strand_profile_values)
+        neg_profile_values = np.array(neg_strand_profile_values)        
         pos_counts = np.sum(pos_profile_values, axis=-1)
         neg_counts = np.sum(neg_profile_values, axis=-1)
         return (pos_counts, neg_counts, pos_profile_values, neg_profile_values)
