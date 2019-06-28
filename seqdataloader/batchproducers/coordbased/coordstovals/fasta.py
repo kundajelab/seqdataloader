@@ -26,8 +26,9 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
     def _get_ndarray(self, coors):
         """
         Args:
-            coors (:obj:`list` of :obj:`Coordinates): all the coordinates must
-                be of the same length
+            coors (:obj:`list` of :obj:`Coordinates): if
+                center_size_to_use is not specified, all the
+                coordinates must be of the same length
             
         Returns:
             numpy ndarray of dims (nexamples x width x 4)
