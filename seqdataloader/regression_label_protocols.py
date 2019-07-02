@@ -160,7 +160,8 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
     try:
         values=task_bigwig.values(chrom,first_bin_start,final_bin_start+args.bin_size,numpy=True)
     except:
-        raise Exception("Failing because chromosome:"+str(chrom)+" appears not to be present in the bigWig file for task:"+task_name)
+        print("Warning! Chromosome:"+str(chrom)+" appears not to be present in the bigWig file for task:"+task_name)
+        return task_name,None
     #replace nan values with 0 
     values=np.nan_to_num(values) 
     #reshape the values such that number of columns is equal to the bin_stride 
@@ -173,7 +174,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
     norm_bin_means=np.arcsinh(bin_means)
     #add in ambiguous bins
     chrom_ambig_bed=None
-    if ((args.allow_ambiguous==True) and (task_ambig!=None)):
+    if ((args.allow_ambiguous==True) and (task_ambig is not None)):
         min_chrom_coord=first_bin_start
         max_chrom_coord=final_bin_start
         if min_chrom_coord >= max_chrom_coord:
