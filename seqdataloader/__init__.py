@@ -12,6 +12,7 @@ from .classification_label_protocols import *
 from .regression_label_protocols import * 
 from multiprocessing.pool import ThreadPool
 import gzip 
+import os
 
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
@@ -118,37 +119,41 @@ def get_bed_and_bigwig_dict(tasks):
     for index,row in tasks.iterrows():
         task_name=row[0]
         print(task_name) 
-        bed_and_bigwig_dict[task_name]=dict() 
-        #get the peak file associated with the task (if provided) 
-        try:
-            task_bed=BedTool(row[1])
-        except:
-            if pd.isna(row[1]):
-                print("No Peak file was provided for task:"+task_name+"; Make sure this is intentional")
-                task_bed==None
-            else:
+        bed_and_bigwig_dict[task_name]=dict()
+        
+        #get the peak file associated with the task (if provided)
+        if pd.isna(row[0]):
+            task_bed=None
+        else:
+            assert os.path.exists(row[1])
+            try:
+                task_bed=BedTool(row[1])
+            except:
                 raise Exception("Could not parse:"+str(row[1]))
-        bed_and_bigwig_dict[task_name]['bed']=task_bed 
+        bed_and_bigwig_dict[task_name]['bed']=task_bed
+        
         #get the BigWig file associated with the task (if provided)
-        try:
-            task_bigwig=pyBigWig.open(row[2])
-        except:
-            if pd.isna(row[2]):
-                print("No BigWig file was provided for task:"+task_name+"; Make sure this is intentional")
-                task_bigwig=None
-            else:
+        if pd.isna(row[2]):
+            task_bigwig=None
+        else:
+            assert os.path.exists(row[2])
+            try:
+                task_bigwig=pyBigWig.open(row[2])
+            except:
                 raise Exception("Could not parse:"+str(row[2]))
         bed_and_bigwig_dict[task_name]['bigwig']=task_bigwig
+        
         #get the ambiguous peaks
-        try:
-            ambig_bed=BedTool(row[3])
-        except:
-            if pd.isna(row[3]):
-                print("No ambiguous peaks provided")
-                ambig_bed=None
-            else:
+        if pd.isna(row[3]):
+            ambig_bed=None
+        else: 
+            assert os.path.exists(row[3])
+            try:
+                ambig_bed=BedTool(row[3])
+            except:
                 raise Exception("Could not parse:"+str(row[3]))
-        bed_and_bigwig_dict[task_name]['ambig']=ambig_bed 
+        bed_and_bigwig_dict[task_name]['ambig']=ambig_bed
+        
     return bed_and_bigwig_dict
 
 def get_indices(chrom,chrom_size,args):

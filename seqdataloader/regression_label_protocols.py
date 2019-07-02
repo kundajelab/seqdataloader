@@ -175,6 +175,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
     #add in ambiguous bins
     chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig is not None)):
+        pdb.set_trace() 
         min_chrom_coord=first_bin_start
         max_chrom_coord=final_bin_start
         if min_chrom_coord >= max_chrom_coord:
