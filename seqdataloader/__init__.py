@@ -188,11 +188,11 @@ def write_output(task_names,full_df,args,mode='w',task_split_engaged=False,outf=
     all_negative_df=None
     if args.store_positives_only==True:
         #find regions with at least one positive entry per task
-        all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]==0).all(1)]
+        all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]<=0).all(1)]
         full_df=full_df[(full_df[task_names]>0).any(1)]
     if args.store_values_above_thresh is not None:
-        all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]<args.store_values_above_thresh).all(1)]
-        full_df=full_df[(full_df[task_names]>=args.store_values_above_thresh).any(1)]
+        all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]<=args.store_values_above_thresh).all(1)]
+        full_df=full_df[(full_df[task_names]>args.store_values_above_thresh).any(1)]
     if args.output_type=="gzip":
         full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
         if all_negative_df is not None:
