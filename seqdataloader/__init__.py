@@ -177,7 +177,7 @@ def write_output(task_names,full_df,args,mode='w',task_split_engaged=False,outf=
     '''
     Save genome-wide labels to disk in gzip, hdf5, or pkl format 
     '''
-    if (args.split_output_by_task==True):
+    if (args.split_output_by_task==True) and (task_split_engaged==False) :
         for task in task_names:
             task_df=full_df['CHR','START','END',task]
             write_output([task],task_df,args,mode=mode,task_split_engaged=True,outf=task.replace('/','.')+"."+args.outf)
