@@ -42,11 +42,18 @@ class KerasBatchGenerator(keras.utils.Sequence):
     def __init__(self, coordsbatch_producer,
                        inputs_coordstovals,
                        targets_coordstovals,
-                       sampleweights_coordstovals=None):
+                       sampleweights_coordstovals=None,
+                       sampleweights_from_inputstargets=None):
         self.coordsbatch_producer = coordsbatch_producer
         self.inputs_coordstovals = inputs_coordstovals
         self.targets_coordstovals = targets_coordstovals
         self.sampleweights_coordstovals = sampleweights_coordstovals
+        self.sampleweights_from_inputstargets =\
+            sampleweights_from_inputstargets
+        if sampleweights_coordstovals is not None:
+            assert sampleweights_from_inputstargets is None
+        if (sampleweights_from_inputstargets is not None:
+            assert sampleweights_coordstovals is None
     
     def __getitem__(self, index):
         coords_batch = self.coordsbatch_producer[index]
@@ -54,6 +61,10 @@ class KerasBatchGenerator(keras.utils.Sequence):
         targets = self.targets_coordstovals(coords_batch)
         if (self.sampleweights_coordstovals is not None):
             sample_weights = self.sampleweights_coordstovals(coords_batch)
+            return (inputs, targets, sample_weights)
+        elif (self.sampleweights_from_inputstargets is not None):
+            sample_weights = self.sampleweights_from_inputstargets(
+                                inputs=inputs, targets=targets)
             return (inputs, targets, sample_weights)
         else:
             return (inputs, targets)
