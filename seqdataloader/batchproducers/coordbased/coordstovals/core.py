@@ -1,4 +1,5 @@
 from __future__ import division, print_function, absolute_import
+from ..core import Coordinates
 
 
 def get_new_coors_around_center(coors, center_size_to_use):
