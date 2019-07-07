@@ -23,7 +23,7 @@ def smooth_profiles(profiles, smoothing_window):
     smoothed_profiles = np.mean(rolling_window(
                         a=padded_profiles.transpose(0,2,1),
                         window=smoothing_window), axis=-1).transpose((0,2,1))
-    return smoothed_profile
+    return smoothed_profiles
 
 
 class BigWigReader(object):
