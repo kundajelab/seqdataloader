@@ -16,12 +16,12 @@ def smooth_profiles(profiles, smoothing_window):
     leftpadlen = int((smoothing_window-1)/2)
     rightpadlen =\
         (smoothing_window-1)-int((smoothing_window-1)/2)
-    padded_profile = np.pad(
-        array=profile,
+    padded_profiles = np.pad(
+        array=profiles,
         pad_width=((0,0),(leftpadlen, rightpadlen), (0,0)),
         mode='edge')
     smoothed_profiles = np.mean(rolling_window(
-                        a=paddedprofile.transpose(0,2,1),
+                        a=padded_profiles.transpose(0,2,1),
                         window=smoothing_window), axis=-1).transpose((0,2,1))
     return smoothed_profile
 
