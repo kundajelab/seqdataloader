@@ -74,7 +74,7 @@ class LogCountsAndProfile(CoordsToVals):
         return to_return
 
 
-class AbstractCountAndProfileTransformer(self):
+class AbstractCountAndProfileTransformer(object):
 
     def __call__(self, counts, profiles):
         raise NotImplementedError()
