@@ -52,7 +52,7 @@ class KerasBatchGenerator(keras.utils.Sequence):
             sampleweights_from_inputstargets
         if sampleweights_coordstovals is not None:
             assert sampleweights_from_inputstargets is None
-        if (sampleweights_from_inputstargets is not None:
+        if sampleweights_from_inputstargets is not None:
             assert sampleweights_coordstovals is None
     
     def __getitem__(self, index):
