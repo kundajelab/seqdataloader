@@ -108,12 +108,12 @@ class SmoothProfiles(AbstractCountAndProfileTransformer):
 class MultiTrackCountsAndProfile(CoordsToVals):
 
     def __init__(self, bigwig_paths,
-                       count_and_profile_transformer,
+                       counts_and_profiles_transformer,
                        counts_mode_name,
                        profile_mode_name, center_size_to_use):
         self.bigwig_readers = [BigWigReader(bigwig_path=x)
                                for x in bigwig_paths]
-        self.count_and_profile_transformer = count_and_profile_transformer
+        self.counts_and_profiles_transformer = counts_and_profiles_transformer
         self.counts_mode_name = counts_mode_name
         self.profile_mode_name = profile_mode_name
         self.center_size_to_use = center_size_to_use
