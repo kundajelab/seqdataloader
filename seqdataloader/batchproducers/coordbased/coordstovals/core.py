@@ -1,6 +1,20 @@
 from __future__ import division, print_function, absolute_import
 
 
+def get_new_coors_around_center(coors, center_size_to_use):
+    new_coors = []
+    for coor in coors:
+        coor_center = int(0.5*(coor.start + coor.end))
+        left_flank = int(0.5*center_size_to_use)
+        right_flank = center_size_to_use - left_flank
+        new_start = coor_center-left_flank
+        new_end = coor_center+right_flank
+        new_coors.append(Coordinates(chrom=coor.chrom,
+                                     start=new_start, end=new_end,
+                                     isplusstrand=coor.isplusstrand))
+    return new_coors
+
+
 class CoordsToVals(object):
     
     def __call__(self, coors):

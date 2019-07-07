@@ -1,8 +1,29 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 import pyBigWig
-from .core import CoordsToVals
+from .core import CoordsToVals, get_new_coors_around_center
 from ..core import Coordinates
+
+
+def rolling_window(a, window):
+    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
+    strides = a.strides + (a.strides[-1],)
+    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+
+
+def smooth_profiles(profiles, smoothing_window):
+    assert len(profiles.shape)==3
+    leftpadlen = int((smoothing_window-1)/2)
+    rightpadlen =\
+        (smoothing_window-1)-int((smoothing_window-1)/2)
+    padded_profile = np.pad(
+        array=profile,
+        pad_width=((0,0),(leftpadlen, rightpadlen), (0,0)),
+        mode='edge')
+    smoothed_profiles = np.mean(rolling_window(
+                        a=paddedprofile.transpose(0,2,1),
+                        window=smoothing_window), axis=-1).transpose((0,2,1))
+    return smoothed_profile
 
 
 class BigWigReader(object):
@@ -51,7 +72,72 @@ class LogCountsAndProfile(CoordsToVals):
         to_return = {self.counts_mode_name: counts,
                      self.profile_mode_name: profile_values}
         return to_return
-      
+
+
+class AbstractCountAndProfileTransformer(self):
+
+    def __call__(self, counts, profiles):
+        raise NotImplementedError()
+
+    def chain(self, count_and_profile_transformer):
+        def chained_count_and_profile_transformer(counts, profiles):
+            counts, profiles = self(counts=counts, profiles=profiles)
+            return count_and_profile_transformer(
+                    counts=counts, profiles=profiles)
+        return chained_count_and_profile_transformer
+
+
+class LogCountsPlusOne(AbstractCountAndProfileTransformer):
+
+    def __call__(self, counts, profiles):
+        return np.log(counts+1), profiles
+
+
+class SmoothProfiles(AbstractCountAndProfileTransformer):
+
+    def __init__(self, smoothing_windows):
+        self.smoothing_windows = smoothing_windows
+
+    def __call__(self, counts, profiles):
+        profiles_to_return = np.concatenate([
+           smooth_profiles(profiles=profiles, smoothing_window=x)
+           for x in self.smoothing_windows], axis=-1)
+        return counts, profiles_to_return
+
+
+class MultiTrackCountsAndProfile(CoordsToVals):
+
+    def __init__(self, bigwig_paths,
+                       count_and_profile_transformer,
+                       counts_mode_name,
+                       profile_mode_name, center_size_to_use):
+        self.bigwig_readers = [BigWigReader(bigwig_path=x)
+                               for x in bigwig_paths]
+        self.count_and_profile_transformer = count_and_profile_transformer
+        self.counts_mode_name = counts_mode_name
+        self.profile_mode_name = profile_mode_name
+        self.center_size_to_use = center_size_to_use
+
+    def _get_counts_and_vals(self, coors):
+        new_coors = get_new_coors_around_center(
+                            coors=coors,
+                            center_size_to_use=self.center_size_to_use)
+        #concatenate the results of the bigwig readers along the last axis
+        profiles = np.concatenate([
+                          x.read_values(coors=new_coors)[:,:,None]
+                          for x in self.bigwig_readers], axis=-1)
+        counts = np.sum(profiles, axis=1)
+        return (counts, profiles)
+    
+    def __call__(self, coors):
+        counts, profiles = self._get_counts_and_vals(coors=coors)
+        counts_transformed, profile_transformed =\
+            self.counts_and_profiles_transformer(
+                  counts=counts,
+                  profiles=profiles)
+        return {self.counts_mode_name: counts_transformed,
+                self.profile_mode_name: profile_transformed}
+ 
 
 class AbstractPosAndNegStrandCountsAndProfile(CoordsToVals):
 
@@ -67,16 +153,9 @@ class AbstractPosAndNegStrandCountsAndProfile(CoordsToVals):
         self.center_size_to_use = center_size_to_use
         
     def _get_pos_and_neg_counts_and_vals(self, coors):
-        new_coors = []
-        for coor in coors:
-            coor_center = int(0.5*(coor.start + coor.end))
-            left_flank = int(0.5*self.center_size_to_use)
-            right_flank = self.center_size_to_use - left_flank
-            new_start = coor_center-left_flank
-            new_end = coor_center+right_flank
-            new_coors.append(Coordinates(chrom=coor.chrom,
-                                         start=new_start, end=new_end,
-                                         isplusstrand=coor.isplusstrand))
+        new_coors = get_new_coors_around_center(
+                            coors=coors,
+                            center_size_to_use=self.center_size_to_use)
         first_strand_profile_values = self.pos_strand_reader.read_values(
                                   coors=new_coors)
         second_strand_profile_values = np.abs(
@@ -132,29 +211,6 @@ class PosAndNegSeparateLogCounts(AbstractPosAndNegStrandCountsAndProfile):
                 np.concatenate(
                     [pos_profile_values[:,:,None],
                      neg_profile_values[:,:,None]], axis=2))
-
-
-def rolling_window(a, window):
-    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
-    strides = a.strides + (a.strides[-1],)
-    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
-      
-
-def smooth(profile_array, smoothing_windows):
-    smoothed_profiles = []
-    for smoothing_window in smoothing_windows:
-        strided_profile = rolling_window(a=profile_array,
-                                             window=smoothing_window)
-        smoothed_profile_nopad = np.mean(strided_profile, axis=-1)
-        leftpadlen = int((smoothing_window-1)/2)
-        rightpadlen =\
-                (smoothing_window-1)-int((smoothing_window-1)/2)
-        padded_profile = np.pad(
-                array=smoothed_profile_nopad,
-                pad_width=((0,0),(leftpadlen, rightpadlen)),
-                mode='constant')
-        smoothed_profiles.append(padded_profile[:,:,None])
-    return smoothed_profiles
     
 
 class PosAndNegSmoothWindowCollapsedLogCounts(
@@ -173,22 +229,10 @@ class PosAndNegSmoothWindowCollapsedLogCounts(
         
         smoothed_profiles = []
         for smoothing_window in self.smoothing_windows:
-            strided_profile = rolling_window(a=profile_sum,
-                                             window=smoothing_window)
-            smoothed_profile_nopad = np.mean(strided_profile, axis=-1)
-            leftpadlen = int((smoothing_window-1)/2)
-            rightpadlen =\
-                (smoothing_window-1)-int((smoothing_window-1)/2)
-            padded_profile = np.pad(
-                array=smoothed_profile_nopad,
-                pad_width=((0,0),(leftpadlen, rightpadlen)),
-                mode='constant')
-            
-            #print(padded_profile.shape)
-            
-            smoothed_profiles.append(padded_profile[:,:,None])
+            padded_profile = smooth_profiles(profiles=profile_sum[:,:,None],
+                                             smoothing_window=smoothing_window) 
+            smoothed_profiles.append(padded_profile)
         
         smooth_profiles = np.concatenate(smoothed_profiles, axis=2)
         
-        return (np.log(pos_counts+neg_counts+1),
-                smooth_profiles)  
+        return (np.log(pos_counts+neg_counts+1), smooth_profiles)  
