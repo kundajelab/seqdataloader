@@ -30,7 +30,7 @@ class Coordinates(object):
                            isplusstrand=(self.isplusstrand==False))
 
 
-def apply_mask(self, tomask, mask):
+def apply_mask(tomask, mask):
     if isinstance(tomask, dict):
         return dict([(key, val[mask]) for key,val in tomask.items()])
     elif isinstance(tomask, list):
