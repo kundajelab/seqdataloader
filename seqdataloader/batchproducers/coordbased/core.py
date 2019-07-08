@@ -56,6 +56,14 @@ class KerasBatchGenerator(keras.utils.Sequence):
         if sampleweights_from_inputstargets is not None:
             assert sampleweights_coordstovals is None
         self.qc_func = qc_func
+
+    def apply_mask(self, tomask, mask):
+        if isinstance(tomask, dict):
+            return dict([(key, val[mask]) for key,val in tomask.items()])
+        elif isinstance(tomask, list):
+            return [x[mask] for x in mask]
+        else:
+            return x[mask]
     
     def __getitem__(self, index):
         coords_batch = self.coordsbatch_producer[index]
@@ -63,18 +71,22 @@ class KerasBatchGenerator(keras.utils.Sequence):
         targets = self.targets_coordstovals(coords_batch)
         if (self.qc_func is not None):
             qc_mask = self.qc_func(inputs=inputs, targets=targets)
-            inputs = inputs[qc_mask]
-            targets = targets[qc_mask]
+            inputs = apply_mask(tomask=inputs, mask=qc_mask)
+            targets = apply_mask(tomask=targets, mask=qc_mask)
         else:
             qc_mask = None
         if (self.sampleweights_coordstovals is not None):
             sample_weights = self.sampleweights_coordstovals(coords_batch)
+            if (qc_mask is not None):
+                sample_weights = apply_mask(tomask=sample_weights,
+                                            mask=qc_mask)
             return (inputs, targets, sample_weights)
         elif (self.sampleweights_from_inputstargets is not None):
             sample_weights = self.sampleweights_from_inputstargets(
                                 inputs=inputs, targets=targets)
             if (qc_mask is not None):
-                sample_weights = sample_weights[qc_mask]
+                sample_weights = apply_mask(tomask=sample_weights,
+                                            mask=qc_mask)
             return (inputs, targets, sample_weights)
         else:
             return (inputs, targets)
