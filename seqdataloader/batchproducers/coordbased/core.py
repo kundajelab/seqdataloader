@@ -30,6 +30,15 @@ class Coordinates(object):
                            isplusstrand=(self.isplusstrand==False))
 
 
+def apply_mask(self, tomask, mask):
+    if isinstance(tomask, dict):
+        return dict([(key, val[mask]) for key,val in tomask.items()])
+    elif isinstance(tomask, list):
+        return [x[mask] for x in mask]
+    else:
+        return x[mask]
+
+
 class KerasBatchGenerator(keras.utils.Sequence):
   
     """
@@ -56,15 +65,7 @@ class KerasBatchGenerator(keras.utils.Sequence):
         if sampleweights_from_inputstargets is not None:
             assert sampleweights_coordstovals is None
         self.qc_func = qc_func
-
-    def apply_mask(self, tomask, mask):
-        if isinstance(tomask, dict):
-            return dict([(key, val[mask]) for key,val in tomask.items()])
-        elif isinstance(tomask, list):
-            return [x[mask] for x in mask]
-        else:
-            return x[mask]
-    
+ 
     def __getitem__(self, index):
         coords_batch = self.coordsbatch_producer[index]
         inputs = self.inputs_coordstovals(coords_batch)
