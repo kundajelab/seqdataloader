@@ -78,16 +78,10 @@ class KerasBatchGenerator(keras.utils.Sequence):
             qc_mask = None
         if (self.sampleweights_coordstovals is not None):
             sample_weights = self.sampleweights_coordstovals(coords_batch)
-            if (qc_mask is not None):
-                sample_weights = apply_mask(tomask=sample_weights,
-                                            mask=qc_mask)
             return (inputs, targets, sample_weights)
         elif (self.sampleweights_from_inputstargets is not None):
             sample_weights = self.sampleweights_from_inputstargets(
                                 inputs=inputs, targets=targets)
-            if (qc_mask is not None):
-                sample_weights = apply_mask(tomask=sample_weights,
-                                            mask=qc_mask)
             return (inputs, targets, sample_weights)
         else:
             return (inputs, targets)
