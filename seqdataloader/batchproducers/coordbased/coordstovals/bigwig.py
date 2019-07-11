@@ -233,6 +233,6 @@ class PosAndNegSmoothWindowCollapsedLogCounts(
                                              smoothing_window=smoothing_window) 
             smoothed_profiles.append(padded_profile)
         
-        smooth_profiles = np.concatenate(smoothed_profiles, axis=2)
+        smoothed_profiles = np.concatenate(smoothed_profiles, axis=2)
         
-        return (np.log(pos_counts+neg_counts+1), smooth_profiles)  
+        return (np.log(pos_counts+neg_counts+1), smoothed_profiles)  
