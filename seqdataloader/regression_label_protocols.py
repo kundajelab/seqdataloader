@@ -172,6 +172,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
     #compute rolling average for each bin
     bin_means=np.sum(rolling_window(strided_sums,args.bin_size//args.bin_stride),-1)/args.bin_size
     norm_bin_means=np.arcsinh(bin_means)
+    num_bins=norm_bin_means.shape[0]
     #add in ambiguous bins
     chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig is not None)):
