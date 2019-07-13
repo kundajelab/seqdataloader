@@ -47,4 +47,4 @@ for index,row in chromsizes.iterrows():
         non_zero_bins[(chrom,non_zero_seq_start[i],non_zero_seq_end[i])]=dict()
         non_zero_bins[(chrom,non_zero_seq_start[i],non_zero_seq_end[i])][task_name]=cur_bin_mean
     print("finished chrom:"+str(chrom)+" for task:"+str(task_name))                                                                      
-    pdb.set_trace() 
+    
