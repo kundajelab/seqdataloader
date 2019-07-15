@@ -1,11 +1,10 @@
 from math import floor,ceil
 import pandas as pd
-from multiprocessing.pool import ThreadPool
 from .utils import rolling_window 
 import pdb
 import numpy as np 
 from pybedtools import BedTool
-
+import pyBigWig
 
 def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args):
     '''
@@ -19,7 +18,8 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     If specified in args.allow_ambiguous, then coverage is also computed in adjacent bins to the two extremes are marked as 
     ambiguous 
     '''
-    print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))    
+    print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
+    task_bigwig=pyBigWig.open(task_bigwig)
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
@@ -37,11 +37,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     #pre-allocate a numpy array of 0's
     num_bins=(final_bin_start-first_bin_start)//args.bin_stride+1 
     coverage_vals=np.zeros(num_bins)
-    counter=0
     for entry in chrom_task_bed:
-        counter+=1
-        if counter%1000==0:
-            print(str(counter))
         chrom=entry[0]
         peak_start=int(entry[1])
         peak_end=int(entry[2])
@@ -93,6 +89,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
     '''
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
     print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
+    task_bigwig=pyBigWig.open(task_bigwig)
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
@@ -160,7 +157,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
     compute bigWig coverage for all bins in the chromosome, regardless of whether a called peak overlaps the bin
     '''
     print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
-
+    task_bigwig=pyBigWig.open(task_bigwig)
     #get the BigWig value at each position along the chromosome, (cutting off anything that extends beyond final_coord)
     try:
         values=task_bigwig.values(chrom,first_bin_start,final_bin_start+args.bin_size,numpy=True)

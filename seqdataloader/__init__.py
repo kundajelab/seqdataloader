@@ -10,6 +10,7 @@ import csv
 import sys
 from .classification_label_protocols import *
 from .regression_label_protocols import * 
+from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 import gzip 
 import os
@@ -93,7 +94,7 @@ def get_chrom_labels(inputs):
 
     #create a thread pool to label bins, each task gets assigned a thread 
     pool_inputs=[] 
-    pool=ThreadPool(args.subthreads)
+    pool=Pool(args.subthreads)
     for task_name in bed_and_bigwig_dict:
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
@@ -141,7 +142,7 @@ def get_bed_and_bigwig_dict(tasks):
                 task_bigwig=pyBigWig.open(row[2])
             except:
                 raise Exception("Could not parse:"+str(row[2]))
-        bed_and_bigwig_dict[task_name]['bigwig']=task_bigwig
+        bed_and_bigwig_dict[task_name]['bigwig']=row[2] #need to parse the pyBigWig inside Pool
         
         #get the ambiguous peaks
         if pd.isna(row[3]):
@@ -260,7 +261,7 @@ def genomewide_labels(args):
     chrom_sizes=pd.read_csv(args.chrom_sizes,sep='\t',header=None)
 
     processed_first_chrom=False
-    #create a ThreadThreadPool to process chromosomes in parallel
+    #create a Pool to process chromosomes in parallel
     print("creating chromosome thread pool")
     pool=ThreadPool(args.threads)
     pool_args=[]
