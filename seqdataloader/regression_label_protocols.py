@@ -19,7 +19,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     If specified in args.allow_ambiguous, then coverage is also computed in adjacent bins to the two extremes are marked as 
     ambiguous 
     '''
-    
+    print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))    
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
@@ -31,14 +31,17 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     chrom_task_bed=task_bed.intersect(chrom_bed)
     chrom_ambig_bed=None
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
-        chrom_ambig_bed=task_ambig.intersect(chrom_bed) 
+        chrom_ambig_bed=task_ambig.intersect(chrom_bed)
     print("got peak subset for chrom:"+str(chrom)+" for task:"+str(task_name))
     
     #pre-allocate a numpy array of 0's
     num_bins=(final_bin_start-first_bin_start)//args.bin_stride+1 
     coverage_vals=np.zeros(num_bins)
-    
+    counter=0
     for entry in chrom_task_bed:
+        counter+=1
+        if counter%1000==0:
+            print(str(counter))
         chrom=entry[0]
         peak_start=int(entry[1])
         peak_end=int(entry[2])
@@ -62,6 +65,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
             if index_coverage_vals>=0 and index_coverage_vals < num_bins: 
                 coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
             index_coverage_vals+=1
+    print("checking ambig")
     if chrom_ambig_bed!=None:
         for entry in chrom_ambig_bed:
             chrom=entry[0]
@@ -87,7 +91,8 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
     '''
     50% of the central 200bp region in a 1kb bin must overlap with the peak for coverage to be computed in the provided bigWig 
     '''
-    #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
+    #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
+    print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:

@@ -94,7 +94,7 @@ def get_chrom_labels(inputs):
     #create a thread pool to label bins, each task gets assigned a thread 
     pool_inputs=[] 
     pool=ThreadPool(args.subthreads)
-    for task_name in bed_and_bigwig_dict: 
+    for task_name in bed_and_bigwig_dict:
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
         task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
