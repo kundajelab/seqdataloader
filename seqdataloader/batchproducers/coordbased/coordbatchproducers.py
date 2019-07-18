@@ -34,7 +34,8 @@ class SimpleCoordsBatchProducer(KerasSequenceApiCoordsBatchProducer):
 
     """
     Args:
-        bed_file (string): file with the bed coordinates
+        bed_file (string): file with the bed coordinates.
+            Assumes coordinates are on the positive strand.
         batch_size (int): note that if you apply some kind of augmentation,
             then this value will end up being half of the actual batch size.
         coord_batch_transformer (AbstracCoordBatchTransformer): does things
@@ -44,11 +45,17 @@ class SimpleCoordsBatchProducer(KerasSequenceApiCoordsBatchProducer):
     """
     def __init__(self, bed_file,
                        batch_size,
+                       hastitle=False,
                        coord_batch_transformer=None,
                        shuffle_before_epoch=False,
                        seed=1234):  
+        print("Heads up: coordinates in bed file"
+              +" are assumed to be on the positive strand;"
+              +" if strand in the bed file is improtant to you, please"
+              +" add that feature to SimpleCoordsBatchProducer")
         self.bed_file = bed_file
         self.batch_size = batch_size
+        self.hastitle = hastitle
         self.coord_batch_transformer = coord_batch_transformer
         self.coords_list = self._read_bed_file(bed_file=self.bed_file)
         self.shuffle_before_epoch = shuffle_before_epoch
@@ -59,13 +66,14 @@ class SimpleCoordsBatchProducer(KerasSequenceApiCoordsBatchProducer):
 
     def _read_bed_file(self, bed_file):
         coords_list = []
-        for line in (gzip.open(bed_file) if ".gz"
-                     in bed_file else open(bed_file)):
-            (chrom, start_str, end_str) =\
-              line.decode("utf-8").rstrip().split("\t")[0:3]
-            coords_list.append(Coordinates(chrom=chrom,
-                                          start=int(start_str),
-                                          end=int(end_str)))
+        for linenum,line in enumerate((gzip.open(bed_file) if ".gz"
+                             in bed_file else open(bed_file))):
+            if (linenum > 0 or self.hasttitle==False):
+                (chrom, start_str, end_str) =\
+                  line.decode("utf-8").rstrip().split("\t")[0:3]
+                coords_list.append(Coordinates(chrom=chrom,
+                                              start=int(start_str),
+                                              end=int(end_str)))
         return coords_list
     
     def _shuffle_coords_list(self):
