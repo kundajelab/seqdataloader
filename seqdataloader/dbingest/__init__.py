@@ -81,6 +81,8 @@ def write_array_to_tiledb(size,
     print("finalizing the write")
     with tiledb.DenseArray(array_out_name, mode='w') as out_array:
         out_array[:] = dict_to_write
+    print("done writing")
+    return
 
 def extract_metadata_field(row,field):
     dataset=row['dataset'] 
@@ -156,6 +158,7 @@ def create_tiledb_array(inputs):
     pool_outputs=pool.map(process_chrom,pool_inputs)
     pool.close()
     pool.join()
+    return "done"
 
 def args_object_from_args_dict(args_dict):
     #create an argparse.Namespace from the dictionary of inputs
@@ -172,7 +175,7 @@ def args_object_from_args_dict(args_dict):
     
 def ingest(args):
     if type(args)==type({}):
-        args=args_object_from_arsg_dict(args)
+        args=args_object_from_args_dict(args)
         
     attribute_info=get_attribute_info() 
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
@@ -191,7 +194,7 @@ def ingest(args):
         
     for index,row in tiledb_metadata.iterrows():
         pool_inputs.append([row,args,chrom_sizes,attribute_info])        
-    pool.map(create_tiledb_array,pool_inputs)
+    task_returns=pool.map(create_tiledb_array,pool_inputs)
     pool.close()
     pool.join()
 
