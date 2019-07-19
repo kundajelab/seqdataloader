@@ -1,0 +1,4 @@
+ENCFF209DJG	peak_files_from_encode_for_label_comparison/ENCFF209DJG.bed.gz	./bigwig_files_from_encode_for_label_comparison/ENCFF842XRQ.bigWig	DNAse	HepG2
+ENCFF605WXD	peak_files_from_encode_for_label_comparison/ENCFF605WXD.bed.gz	./bigwig_files_from_encode_for_label_comparison/ENCFF667QJZ.bigWig	Myc	K562
+ENCFF073ORT	peak_files_from_encode_for_label_comparison/ENCFF073ORT.bed.gz	./bigwig_files_from_encode_for_label_comparison/ENCFF743ULW.bigWig	DNAse	GM12878
+ENCFF618VMC	peak_files_from_encode_for_label_comparison/ENCFF618VMC.bed.gz	./bigwig_files_from_encode_for_label_comparison/ENCFF796GHK.bigWig	Max	K562
