@@ -1,4 +1,4 @@
-from seqdataloader import *
+from seqdataloader.labelgen import *
 classification_params={
     'task_list':"tasks.tsv",
     'outf':"classificationlabels.SummitWithin200bpCenter.tsv.gz",

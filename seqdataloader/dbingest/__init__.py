@@ -72,7 +72,7 @@ def write_array_to_tiledb(size,
         
     else:
         #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
-        required_attrib=list(get_attrib_info().keys())
+        required_attrib=list(get_attribute_info().keys())
         for attrib in required_attrib:
             if attrib not in dict_to_write:
                 signal_data=np.zeros(size)
@@ -190,8 +190,7 @@ def ingest(args):
         print("tiledb group already exists")
         
     for index,row in tiledb_metadata.iterrows():
-        pool_inputs.append([row,args,chrom_sizes,attribute_info])
-        
+        pool_inputs.append([row,args,chrom_sizes,attribute_info])        
     pool.map(create_tiledb_array,pool_inputs)
     pool.close()
     pool.join()
