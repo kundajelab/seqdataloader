@@ -1,11 +1,9 @@
-from utils import *
+from .utils import *
 
 def get_attribute_info():
     required_attribs=['fc_bigwig','pval_bigwig','count_bigwig','idr_peak','overlap_peak','ambig_peak']
 
     attrib_info=dict()
-    for attrib in required_attribs:
-        attrib_info['attrib']=dict()
     attrib_info['pval_bigwig']={'dtype':'float32',
                                 'opener':open_bigwig_for_parsing,
                                 'parser':parse_bigwig_chrom_vals}

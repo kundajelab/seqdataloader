@@ -1,13 +1,14 @@
 ## helper functions to ingest bigwig and narrowPeak data files into a tileDB instance.
-## tileDB instances are indexed by coordinate, and a task(i.e. a unique identifier) 
-## attributes include cell type, assay, project, filetype (i.e. fc bigwig, pval bigwig, 
+## tileDB instances are indexed by coordinate
 import tiledb
 import argparse
 import pandas as pd
 import numpy as np
-from attrib_config import *
-from utils import *
-import multiprocessing as mp 
+from .attrib_config import *
+from .utils import *
+from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
+
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
@@ -15,7 +16,8 @@ def parse_args():
     parser.add_argument("--tiledb_group")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
-    parser.add_argument("--threads") 
+    parser.add_argument("--chrom_threads",type=int,default=1,help="inner thread pool, launched by task_threads")
+    parser.add_argument("--task_threads",type=int,default=1,help="outer thread pool,launched by main thread") 
     return parser.parse_args()
 
 def create_new_array(size,
@@ -41,7 +43,7 @@ def create_new_array(size,
         attribs.append(tiledb.Attr(
             name=key,
             filters=tiledb.FilterList([tiledb.GzipFilter()]),
-            dtype=attrib_info[key]['dtype']))
+            dtype=attribute_info[key]['dtype']))
     tiledb_schema = tiledb.ArraySchema(
         domain=tiledb_dom,
         attrs=tuple(attribs),
@@ -59,6 +61,7 @@ def write_array_to_tiledb(size,
                           compressor='gzip',
                           compression_level=-1,
                           updating=False):
+    print("starting to write output") 
     if updating is True:
         #we are only updating some attributes in the array
         with tiledb.DenseArray(array_out_name,mode='r') as cur_array:
@@ -75,7 +78,7 @@ def write_array_to_tiledb(size,
                 signal_data=np.zeros(size)
                 signal_data[:]=np.nan
                 dict_to_write[attrib]=signal_data
-                
+    print("finalizing the write")
     with tiledb.DenseArray(array_out_name, mode='w') as out_array:
         out_array[:] = dict_to_write
 
@@ -98,52 +101,86 @@ def open_data_for_parsing(row,attribute_info):
             data_dict[col]=attribute_info[col]['opener'](cur_fname)            
     return data_dict
 
-def create_tiledb_array(row,args,chrom_sizes,attribute_info):
+def process_chrom(inputs):
+    chrom=inputs[0]
+    size=inputs[1]
+    array_out_name=inputs[2]
+    data_dict=inputs[3]
+    attribute_info=inputs[4]
+    overwrite=inputs[5]
+    updating=False
+    if tiledb.object_type(array_out_name) == "array":
+        if overwrite==False:
+            raise Exception("array:"+str(array_out_name) + "already exists; use the --overwrite flag to overwrite it. Exiting")
+        else:
+            print("warning: the array: "+str(array_out_name)+" already exists. You provided the --overwrite flag, so it will be updated/overwritten")
+            updating=True
+    else:
+        #create the array:
+        create_new_array(size=size,
+                         array_out_name=array_out_name)
+        print("created new array:"+str(array_out_name))
+
+    dict_to_write=dict()
+    for attribute in data_dict:
+        dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size)
+        print("got:"+str(attribute)+" for chrom:"+str(chrom))
+
+    write_array_to_tiledb(size=size,
+                          dict_to_write=dict_to_write,
+                          array_out_name=array_out_name,
+                          updating=updating)
+    print("wrote array to disk for dataset:"+str(dataset))         
+    return 'done'
+
+def create_tiledb_array(inputs):
     '''
     create new tileDB array for a single dataset, overwrite if array exists and user sets --overwrite flag
     '''
-
+    row=inputs[0]
+    args=inputs[1]
+    chrom_sizes=inputs[2]
+    attribute_info=inputs[3] 
     #get the current dataset 
     dataset=row['dataset']    
     #read in filenames for bigwigs
     data_dict=open_data_for_parsing(row,attribute_info)
-    
+    pool=ThreadPool(args.chrom_threads)
+    pool_inputs=[] 
     array_outf_prefix="/".join([args.tiledb_group,dataset])
     for index, row in chrom_sizes.iterrows():
         chrom=row[0]
         size=row[1]
         array_out_name='.'.join([array_outf_prefix,chrom])
-        updating=False
-        if tiledb.object_type(array_out_name) == "array":
-            if args.overwrite==False:
-                raise Exception("array:"+str(array_out_name) + "already exists; use the --overwrite flag to overwrite it. Exiting")
-            else:
-                print("warning: the array: "+str(array_out_name)+" already exists. You provided the --overwrite flag, so it will be updated/overwritten")
-                updating=True
-        else:
-            #create the array:
-            create_new_array(size=size,
-                             array_out_name=array_out_name)
-            print("created new array:"+str(array_out_name))
-                  
-        dict_to_write=dict()
-        for attribute in data_dict:
-            dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size)
-            print("got:"+str(attribute)+" for chrom:"+str(chrom))
-        write_array_to_tiledb(size=size,
-                              dict_to_write=dict_to_write,
-                              array_out_name=array_out_name,
-                              updating=updating)
-        print("wrote array to disk for dataset:"+str(dataset))         
+        pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args.overwrite))
+    pool_outputs=pool.map(process_chrom,pool_inputs)
+    pool.close()
+    pool.join()
 
-def main():
-    args=parse_args()
+def args_object_from_args_dict(args_dict):
+    #create an argparse.Namespace from the dictionary of inputs
+    args_object=argparse.Namespace()
+    #set the defaults
+    vars(args_object)['chrom_threahds']=1
+    vars(args_object)['task_threads']=1
+    vars(args_object)['overwrite']=False
+    for key in args_dict:
+        vars(args_object)[key]=args_dict[key]
+    #set any defaults that are unset 
+    args=args_object    
+    return args 
+    
+def ingest(args):
+    if type(args)==type({}):
+        args=args_object_from_arsg_dict(args)
+        
     attribute_info=get_attribute_info() 
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
     print("loaded chrom sizes")
-    
+    pool=Pool(args.task_threads)
+    pool_inputs=[] 
     #check if the tiledb_group exists, and if not, create it
     if tiledb.object_type(args.tiledb_group) is not 'group':        
         group_uri=tiledb.group_create(args.tiledb_group)
@@ -153,7 +190,16 @@ def main():
         print("tiledb group already exists")
         
     for index,row in tiledb_metadata.iterrows():
-        create_tiledb_array(row,args,chrom_sizes,attribute_info)
+        pool_inputs.append([row,args,chrom_sizes,attribute_info])
+        
+    pool.map(create_tiledb_array,pool_inputs)
+    pool.close()
+    pool.join()
+
+def main():
+    args=parse_args()
+    ingest(args)
+    
     
 if __name__=="__main__":
     main() 
