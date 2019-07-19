@@ -5,7 +5,9 @@ import tiledb
 import argparse
 import pandas as pd
 import numpy as np
-import pyBigWig
+from attrib_config import *
+from utils import *
+import multiprocessing as mp 
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
@@ -13,6 +15,7 @@ def parse_args():
     parser.add_argument("--tiledb_group")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
+    parser.add_argument("--threads") 
     return parser.parse_args()
 
 def create_new_array(size,
@@ -30,36 +33,18 @@ def create_new_array(size,
         tile=tile_size,
         dtype='uint32')
     tiledb_dom = tiledb.Domain(tiledb_dim)
-    #generate the attribute information 
-    fc_bigwig_attr = tiledb.Attr(
-        name='fc_bigwig',
-        filters=tiledb.FilterList([tiledb.GzipFilter()]),
-        dtype='float32')
-    pval_bigwig_attr = tiledb.Attr(
-        name='pval_bigwig',
-        filters=tiledb.FilterList([tiledb.GzipFilter()]),
-        dtype='float32')
-    count_bigwig_attr = tiledb.Attr(
-        name='count_bigwig',
-        filters=tiledb.FilterList([tiledb.GzipFilter()]),
-        dtype='float32')
-    idr_peak_attr = tiledb.Attr(
-        name='idr_peak',
-        filters=tiledb.FilterList([tiledb.GzipFilter()]),
-        dtype='int')
-    overlap_peak_attr = tiledb.Attr(
-        name='overlap_peak',
-        filters=tiledb.FilterList([tiledb.GzipFilter()]),
-        dtype='int')
-    ambig_peak_attr = tiledb.Attr(
-        name='ambig_peak',
-        filters=tiledb.FilterList([tiledb.GzipFilter()]),
-        dtype='int')    
-    print("made attr")
     
+    #generate the attribute information
+    attribute_info=get_attribute_info()
+    attribs=[]
+    for key in attribute_info:
+        attribs.append(tiledb.Attr(
+            name=key,
+            filters=tiledb.FilterList([tiledb.GzipFilter()]),
+            dtype=attrib_info[key]['dtype']))
     tiledb_schema = tiledb.ArraySchema(
         domain=tiledb_dom,
-        attrs=(fc_bigwig_attr,pval_bigwig_attr,count_bigwig_attr,idr_peak_attr,overlap_peak_attr,ambig_peak_attr),
+        attrs=tuple(attribs),
         cell_order='row-major',
         tile_order='row-major')
 
@@ -68,118 +53,92 @@ def create_new_array(size,
     return
 
 def write_array_to_tiledb(size,
-                          fc_bigwig_chrom_array,
-                          pval_bigwig_chrom_array,
-                          count_bigwig_chrom_array,
-                          idr_peak_chrom_array,
-                          overlap_peak_chrom_array,
-                          ambig_peak_chrom_array,
+                          dict_to_write,
                           array_out_name,
                           default_tile_size=9000,
                           compressor='gzip',
-                          compression_level=-1):
+                          compression_level=-1,
+                          updating=False):
+    if updating is True:
+        #we are only updating some attributes in the array
+        with tiledb.DenseArray(array_out_name,mode='r') as cur_array:
+            cur_vals=cur_array[:]
+        for key in dict_to_write:
+            cur_vals[key]=dict_to_write[key]
+        dict_to_write=cur_vals
+        
+    else:
+        #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
+        required_attrib=list(get_attrib_info().keys())
+        for attrib in required_attrib:
+            if attrib not in dict_to_write:
+                signal_data=np.zeros(size)
+                signal_data[:]=np.nan
+                dict_to_write[attrib]=signal_data
+                
     with tiledb.DenseArray(array_out_name, mode='w') as out_array:
-        out_array[:] ={'fc_bigwig':fc_bigwig_chrom_array,
-                       'pval_bigwig':pval_bigwig_chrom_array,
-                       'count_bigwig':count_bigwig_chrom_array,
-                       'idr_peak':idr_peak_chrom_array,
-                       'overlap_peak':overlap_peak_chrom_array,
-                       'ambig_peak':ambig_peak_chrom_array}
+        out_array[:] = dict_to_write
 
-def extract_metadata_field(dataset,row,field):        
+def extract_metadata_field(row,field):
+    dataset=row['dataset'] 
     try:
         return row[field]
     except:
         print("tiledb_metadata has no column "+field+" for dataset:"+str(dataset))
         return None
 
-def create_tiledb_array(row,args,chrom_sizes):
+def open_data_for_parsing(row,attribute_info):
+    data_dict={}
+    cols=list(row.index)
+    if 'dataset' in cols:
+        cols.remove('dataset')
+    for col in cols:
+        cur_fname=extract_metadata_field(row,col)
+        if cur_fname is not None:
+            data_dict[col]=attribute_info[col]['opener'](cur_fname)            
+    return data_dict
+
+def create_tiledb_array(row,args,chrom_sizes,attribute_info):
     '''
     create new tileDB array for a single dataset, overwrite if array exists and user sets --overwrite flag
     '''
-    dataset=row['dataset']
-    fc_bigwig=extract_metadata_field(dataset,row,'fc_bigwig')
-    pval_bigwig=extract_metadata_field(dataset,row,'pval_bigwig')
-    count_bigwig=extract_metadata_field(dataset,row,'count_bigwig')
-    #open the bigwigs if they are not none
-    if fc_bigwig is not None:
-        fc_bigwig=pyBigWig.open(fc_bigwig)
-    if pval_bigwig is not None:
-        pval_bigwig=pyBigWig.open(pval_bigwig)
-    if count_bigwig is not None:
-        count_bigwig=pyBigWig.open(count_bigwig)
-    #load the bed files (0-indexed by default) if they are not None 
-    idr_peaks=extract_metadata_field(dataset,row,'idr_peaks')
-    if idr_peaks is not None:
-        idr_peaks=pd.read_csv(idr_peaks,header=None,sep='\t') 
-    overlap_peaks=extract_metadata_field(dataset,row,'overlap_peaks')
-    if overlap_peaks is not None:
-        overlap_peaks=pd.read_csv(overlap_peaks,header=None,sep='\t') 
-    ambig_peaks=extract_metadata_field(dataset,row,'ambig_peaks')
-    if ambig_peaks is not None:
-        ambig_peaks=pd.read_csv(ambig_peaks,header=None,sep='\t')
-        
 
+    #get the current dataset 
+    dataset=row['dataset']    
+    #read in filenames for bigwigs
+    data_dict=open_data_for_parsing(row,attribute_info)
+    
     array_outf_prefix="/".join([args.tiledb_group,dataset])
     for index, row in chrom_sizes.iterrows():
         chrom=row[0]
         size=row[1]
         array_out_name='.'.join([array_outf_prefix,chrom])
+        updating=False
         if tiledb.object_type(array_out_name) == "array":
             if args.overwrite==False:
                 raise Exception("array:"+str(array_out_name) + "already exists; use the --overwrite flag to overwrite it. Exiting")
             else:
                 print("warning: the array: "+str(array_out_name)+" already exists. You provided the --overwrite flag, so it will be updated/overwritten")
+                updating=True
         else:
             #create the array:
             create_new_array(size=size,
                              array_out_name=array_out_name)
-        
-        fc_bigwig_chrom_array=parse_bigwig_chrom_vals(fc_bigwig,chrom,size)
-        print("parsed fc bigwig for chrom:"+str(chrom))
-        pval_bigwig_chrom_array=parse_bigwig_chrom_vals(pval_bigwig,chrom,size)
-        print("parsed pval bigwig for chrom:"+str(chrom))
-        count_bigwig_chrom_array=parse_bigwig_chrom_vals(count_bigwig,chrom,size)
-        print("parsed count bigwig for chrom:"+str(chrom))
-        idr_peak_chrom_array=parse_narrowPeak_chrom_vals(idr_peaks,chrom,size)
-        print("parsed idr peaks for chrom:"+str(chrom))
-        overlap_peak_chrom_array=parse_narrowPeak_chrom_vals(overlap_peaks,chrom,size)
-        print("parsed overlap peaks for chrom:"+str(chrom))
-        ambig_peak_chrom_array=parse_narrowPeak_chrom_vals(ambig_peaks,chrom,size)
-        print("parsed ambig peaks for chrom:"+str(chrom))
-
+            print("created new array:"+str(array_out_name))
+                  
+        dict_to_write=dict()
+        for attribute in data_dict:
+            dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size)
+            print("got:"+str(attribute)+" for chrom:"+str(chrom))
         write_array_to_tiledb(size=size,
-                              fc_bigwig_chrom_array=fc_bigwig_chrom_array,
-                              pval_bigwig_chrom_array=pval_bigwig_chrom_array,
-                              count_bigwig_chrom_array=count_bigwig_chrom_array,
-                              idr_peak_chrom_array=idr_peak_chrom_array,
-                              overlap_peak_chrom_array=overlap_peak_chrom_array,
-                              ambig_peak_chrom_array=ambig_peak_chrom_array,
-                              array_out_name=array_out_name)
+                              dict_to_write=dict_to_write,
+                              array_out_name=array_out_name,
+                              updating=updating)
         print("wrote array to disk for dataset:"+str(dataset))         
-
-
-def parse_bigwig_chrom_vals(bigwig_object,chrom,size):
-    signal_data = np.zeros(size, dtype=np.float32)
-    if bigwig_object is None:
-        signal_data[:]=np.nan
-    else:
-        signal_data[:]=bigwig_object.values(chrom,0,size) 
-    return signal_data
-
-def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size):
-    signal_data = np.zeros(size, dtype=np.int)
-    if narrowPeak_df is None:
-        signal_data[:]=np.nan
-    else:
-        chrom_subset_df=narrowPeak_df[narrowPeak_df[0]==chrom]
-        for index,row in chrom_subset_df.iterrows():
-            signal_data[row[1]:row[2]]=1
-    return signal_data 
 
 def main():
     args=parse_args()
-    
+    attribute_info=get_attribute_info() 
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
@@ -194,7 +153,7 @@ def main():
         print("tiledb group already exists")
         
     for index,row in tiledb_metadata.iterrows():
-        create_tiledb_array(row,args,chrom_sizes)
+        create_tiledb_array(row,args,chrom_sizes,attribute_info)
     
 if __name__=="__main__":
     main() 
