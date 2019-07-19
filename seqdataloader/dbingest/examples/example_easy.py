@@ -22,11 +22,7 @@ def create_array():
 def write_array():
     # Open the array and write to it.
     with tiledb.DenseArray(array_name, mode='w') as A:
-        data = np.array(([1, 2, 3, 4],
-                         [5, 6, 7, 8],
-                         [9, 10, 11, 12],
-                         [13, 14, 15, 16]))
-        A[:] = data
+        A[1:2] = np.array([1,1,1,1])
 
 def read_array():
         # Open the array and read from it.
@@ -37,5 +33,5 @@ def read_array():
 
 if tiledb.object_type(array_name)!="array": 
     create_array()
-    write_array()
-    read_array()
+write_array()
+read_array()
