@@ -69,18 +69,16 @@ def write_array_to_tiledb(size,
         for key in dict_to_write:
             cur_vals[key]=dict_to_write[key]
         dict_to_write=cur_vals
-        
+        print("updated data dict for writing") 
     else:
         #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
         required_attrib=list(get_attribute_info().keys())
         for attrib in required_attrib:
             if attrib not in dict_to_write:
-                signal_data=np.zeros(size)
-                signal_data[:]=np.nan
-                dict_to_write[attrib]=signal_data
+                dict_to_write[attrib]=np.full(size,np.nan)
     print("finalizing the write")
     with tiledb.DenseArray(array_out_name, mode='w') as out_array:
-        out_array[:] = dict_to_write
+            out_array[:]=dict_to_write
     print("done writing")
     return
 
@@ -132,7 +130,7 @@ def process_chrom(inputs):
                           dict_to_write=dict_to_write,
                           array_out_name=array_out_name,
                           updating=updating)
-    print("wrote array to disk for dataset:"+str(dataset))         
+    print("wrote array to disk for dataset:"+str(array_out_name))         
     return 'done'
 
 def create_tiledb_array(inputs):
@@ -182,7 +180,7 @@ def ingest(args):
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
     print("loaded chrom sizes")
-    pool=Pool(args.task_threads)
+    pool=ThreadPool(args.task_threads)
     pool_inputs=[] 
     #check if the tiledb_group exists, and if not, create it
     if tiledb.object_type(args.tiledb_group) is not 'group':        
