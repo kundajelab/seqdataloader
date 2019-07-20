@@ -59,7 +59,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
         index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
             if index_coverage_vals>=0 and index_coverage_vals < num_bins: 
-                coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
+                coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size,args.bigwig_stats)[0]
             index_coverage_vals+=1
     print("checking ambig")
     if chrom_ambig_bed!=None:
@@ -129,7 +129,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
         index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
             if index_coverage_vals>=0 and index_coverage_vals < num_bins:
-                coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size)[0]
+                coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size,args.bigwig_stats)[0]
             index_coverage_vals+=1
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         for entry in chrom_ambig_bed:
