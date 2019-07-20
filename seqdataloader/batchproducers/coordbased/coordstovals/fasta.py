@@ -20,8 +20,9 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
            'a':[1,0,0,0],'c':[0,1,0,0],'g':[0,0,1,0],'t':[0,0,0,1],
            'n':[0,0,0,0],'A':[1,0,0,0],'C':[0,1,0,0],'G':[0,0,1,0],
            'T':[0,0,0,1],'N':[0,0,0,0]}
+        #use [0,0,0,0] as default if FASTA base is not found in the dictionary
         self.onehot_encoder = (
-            lambda seq: np.array([self.ltrdict[x] for x in seq]))
+            lambda seq: np.array([self.ltrdict.get(x,[0,0,0,0]) for x in seq]))
     
     def _get_ndarray(self, coors):
         """
