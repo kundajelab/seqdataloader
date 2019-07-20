@@ -1,5 +1,5 @@
 from __future__ import division, print_function, absolute_import
-from . import batchproducers
+from seqdataloader import batchproducers
 import argparse
 from pybedtools import BedTool
 import pyBigWig 
@@ -40,8 +40,8 @@ def parse_args():
     parser.add_argument("--left_flank",type=int,default=400,help="left flank")
     parser.add_argument("--right_flank",type=int,default=400,help="right flank")
     parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positive bin")
-    parser.add_argument("--threads",type=int,default=4,help="Number of chromosomes to process at once.")
-    parser.add_argument("--subthreads",type=int,default=1,help="Number of tasks to process at once for a given chromosome")
+    parser.add_argument("--task_threads",type=int,default=1,help="Number of tasks to process for a given chromosome.")
+    parser.add_argument("--chrom_threads",type=int,default=4,help="Number of chromosomes to process at once.")
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
     parser.add_argument("--allow_ambiguous",default=False,action="store_true")
     parser.add_argument("--store_positives_only",default=False,action="store_true")
@@ -94,7 +94,7 @@ def get_chrom_labels(inputs):
 
     #create a thread pool to label bins, each task gets assigned a thread 
     pool_inputs=[] 
-    pool=Pool(args.subthreads)
+    pool=Pool(args.task_threads)
     for task_name in bed_and_bigwig_dict:
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
@@ -230,8 +230,8 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['left_flank']=400
     vars(args_object)['right_flank']=400
     vars(args_object)['bin_size']=200
-    vars(args_object)['threads']=1
-    vars(args_object)['subthreads']=4
+    vars(args_object)['chrom_threads']=4
+    vars(args_object)['task_threads']=1
     vars(args_object)['overlap_thresh']=0.5
     vars(args_object)['allow_ambiguous']=True
     vars(args_object)['store_positives_only']=False
@@ -263,7 +263,7 @@ def genomewide_labels(args):
     processed_first_chrom=False
     #create a Pool to process chromosomes in parallel
     print("creating chromosome thread pool")
-    pool=ThreadPool(args.threads)
+    pool=ThreadPool(args.chrom_threads)
     pool_args=[]
     chrom_order=[] 
     for index,row in chrom_sizes.iterrows():
