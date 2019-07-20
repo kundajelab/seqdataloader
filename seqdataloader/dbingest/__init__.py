@@ -12,7 +12,7 @@ from multiprocessing.pool import ThreadPool
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
-    parser.add_argument("--tiledb_metadata",help="fileds are: Dataset, FC_bigwig, PVAL_bigwig, COUNT_bigwig, IDR_peaks, OVERLAP_peaks, AMBIG_peaks")
+    parser.add_argument("--tiledb_metadata",help="fileds are: Dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, idr_peaks, overlap_peaks, ambig_peaks")
     parser.add_argument("--tiledb_group")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
