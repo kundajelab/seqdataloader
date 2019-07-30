@@ -15,7 +15,6 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
         super(PyfaidxCoordsToVals, self).__init__(**kwargs)
         self.center_size_to_use = center_size_to_use
         self.genome_fasta = genome_fasta_path
-        self.genome_object = Fasta(genome_fasta_path)
         self.ltrdict = {
            'a':[1,0,0,0],'c':[0,1,0,0],'g':[0,0,1,0],'t':[0,0,0,1],
            'n':[0,0,0,0],'A':[1,0,0,0],'C':[0,1,0,0],'G':[0,0,1,0],
@@ -34,16 +33,17 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
         Returns:
             numpy ndarray of dims (nexamples x width x 4)
         """
+        genome_object = Fasta(self.genome_fasta)
         seqs = []
         for coor in coors:
           if (self.center_size_to_use is not None):
             the_center = int((coor.start + coor.end)*0.5)
-            seqs.append(self.genome_object[coor.chrom][
+            seqs.append(genome_object[coor.chrom][
                 the_center-int(0.5*self.center_size_to_use):
                 the_center+(self.center_size_to_use
                             -int(0.5*self.center_size_to_use))])
           else:
-            seqs.append(self.genome_object[coor.chrom][coor.start:coor.end])
+            seqs.append(genome_object[coor.chrom][coor.start:coor.end])
 
         onehot_seqs = []
         for seq,coor in zip(seqs, coors):
