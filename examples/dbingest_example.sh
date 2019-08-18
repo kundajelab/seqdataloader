@@ -4,5 +4,7 @@ db_ingest --tiledb_metadata tasks.dbingest.tsv \
     --overwrite \
     --chrom_sizes hg38.chrom21.sizes \
     --chrom_threads 25 \
-    --task_threads 1
+    --task_threads 1 \
+    --store_summits \
+    --summit_indicator 2
 

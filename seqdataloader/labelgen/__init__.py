@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from seqdataloader import batchproducers
 import argparse
 from pybedtools import BedTool
 import pyBigWig 
@@ -40,8 +39,10 @@ def parse_args():
     parser.add_argument("--left_flank",type=int,default=400,help="left flank")
     parser.add_argument("--right_flank",type=int,default=400,help="right flank")
     parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positive bin")
+
     parser.add_argument("--task_threads",type=int,default=1,help="Number of tasks to process for a given chromosome.")
     parser.add_argument("--chrom_threads",type=int,default=4,help="Number of chromosomes to process at once.")
+    parser.add_argument("--bigwig_stats",choices=['mean','min','max','coverage','std'],default='mean',help="Value to extract from bigwig file")
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
     parser.add_argument("--allow_ambiguous",default=False,action="store_true")
     parser.add_argument("--store_positives_only",default=False,action="store_true")
@@ -238,6 +239,7 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['store_values_above_thresh']=None
     vars(args_object)['output_hdf5_low_mem']=False
     vars(args_object)['task_list_sep']='\t'
+    vars(args_object)['bigwig_stats']='mean'
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 

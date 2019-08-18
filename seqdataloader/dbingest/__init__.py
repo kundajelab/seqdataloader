@@ -12,12 +12,14 @@ from multiprocessing.pool import ThreadPool
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
-    parser.add_argument("--tiledb_metadata",help="fileds are: Dataset, FC_bigwig, PVAL_bigwig, COUNT_bigwig, IDR_peaks, OVERLAP_peaks, AMBIG_peaks")
+    parser.add_argument("--tiledb_metadata",help="fileds are: Dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, idr_peaks, overlap_peaks, ambig_peaks")
     parser.add_argument("--tiledb_group")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
     parser.add_argument("--chrom_threads",type=int,default=1,help="inner thread pool, launched by task_threads")
-    parser.add_argument("--task_threads",type=int,default=1,help="outer thread pool,launched by main thread") 
+    parser.add_argument("--task_threads",type=int,default=1,help="outer thread pool,launched by main thread")
+    parser.add_argument("--store_summits",action="store_true")
+    parser.add_argument("--summit_indicator",type=int,default=2,help="integer value to use as indicator of whether a base pair is a peak summit")
     return parser.parse_args()
 
 def create_new_array(size,
@@ -69,18 +71,16 @@ def write_array_to_tiledb(size,
         for key in dict_to_write:
             cur_vals[key]=dict_to_write[key]
         dict_to_write=cur_vals
-        
+        print("updated data dict for writing") 
     else:
         #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
         required_attrib=list(get_attribute_info().keys())
         for attrib in required_attrib:
             if attrib not in dict_to_write:
-                signal_data=np.zeros(size)
-                signal_data[:]=np.nan
-                dict_to_write[attrib]=signal_data
+                dict_to_write[attrib]=np.full(size,np.nan)
     print("finalizing the write")
     with tiledb.DenseArray(array_out_name, mode='w') as out_array:
-        out_array[:] = dict_to_write
+            out_array[:]=dict_to_write
     print("done writing")
     return
 
@@ -110,6 +110,8 @@ def process_chrom(inputs):
     data_dict=inputs[3]
     attribute_info=inputs[4]
     overwrite=inputs[5]
+    store_summits=inputs[6]
+    summit_indicator=inputs[7] 
     updating=False
     if tiledb.object_type(array_out_name) == "array":
         if overwrite==False:
@@ -125,14 +127,14 @@ def process_chrom(inputs):
 
     dict_to_write=dict()
     for attribute in data_dict:
-        dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size)
+        dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size,store_summits,summit_indicator)
         print("got:"+str(attribute)+" for chrom:"+str(chrom))
 
     write_array_to_tiledb(size=size,
                           dict_to_write=dict_to_write,
                           array_out_name=array_out_name,
                           updating=updating)
-    print("wrote array to disk for dataset:"+str(dataset))         
+    print("wrote array to disk for dataset:"+str(array_out_name))         
     return 'done'
 
 def create_tiledb_array(inputs):
@@ -154,7 +156,7 @@ def create_tiledb_array(inputs):
         chrom=row[0]
         size=row[1]
         array_out_name='.'.join([array_outf_prefix,chrom])
-        pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args.overwrite))
+        pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args.overwrite,args.store_summits, args.summit_indicator))
     pool_outputs=pool.map(process_chrom,pool_inputs)
     pool.close()
     pool.join()
@@ -167,6 +169,8 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['chrom_threahds']=1
     vars(args_object)['task_threads']=1
     vars(args_object)['overwrite']=False
+    vars(args_object)['store_summits']=True
+    vars(args_object)['summit_indicator']=2
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
@@ -182,7 +186,7 @@ def ingest(args):
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
     print("loaded chrom sizes")
-    pool=Pool(args.task_threads)
+    pool=ThreadPool(args.task_threads)
     pool_inputs=[] 
     #check if the tiledb_group exists, and if not, create it
     if tiledb.object_type(args.tiledb_group) is not 'group':        

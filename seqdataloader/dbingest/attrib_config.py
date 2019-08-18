@@ -10,9 +10,12 @@ def get_attribute_info():
     attrib_info['fc_bigwig']={'dtype':'float32',
                               'opener':open_bigwig_for_parsing,
                               'parser':parse_bigwig_chrom_vals}
-    attrib_info['count_bigwig']={'dtype':'float32',
-                                 'opener':open_bigwig_for_parsing,
-                                 'parser':parse_bigwig_chrom_vals}
+    attrib_info['count_bigwig_plus_5p']={'dtype':'float32',
+                                         'opener':open_bigwig_for_parsing,
+                                         'parser':parse_bigwig_chrom_vals}
+    attrib_info['count_bigwig_minux_5p']={'dtype':'float32',
+                                          'opener':open_bigwig_for_parsing,
+                                          'parser':parse_bigwig_chrom_vals}    
     attrib_info['idr_peak']={'dtype':'int',
                              'opener':open_csv_for_parsing,
                              'parser':parse_narrowPeak_chrom_vals}
