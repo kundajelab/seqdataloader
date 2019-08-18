@@ -101,11 +101,11 @@ def get_chrom_labels(inputs):
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
         task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
         pool_inputs.append((task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args))
-    bin_values=pool.map(get_labels_one_task,pool_inputs)
+    bin_values=pool.map_async(get_labels_one_task,pool_inputs)
     pool.close()
     pool.join()
     
-    for task_name,task_labels in bin_values:
+    for task_name,task_labels in bin_values.get():
         if task_labels is None:
             continue
         chrom_df[task_name]=task_labels
@@ -282,7 +282,7 @@ def genomewide_labels(args):
         chrom_size=row[1]
         pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
     print("launching thread pool")
-    processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
+    processed_chrom_outputs=pool.map_async(get_chrom_labels,pool_args)
     pool.close()
     pool.join()
 
@@ -290,7 +290,7 @@ def genomewide_labels(args):
     if args.split_output_by_chrom==True:
         exit()
     mode='w'
-    for chrom, chrom_df in processed_chrom_outputs:
+    for chrom, chrom_df in processed_chrom_outputs.get():
         #write to output file!
         if chrom_df is None:
             continue 
