@@ -1,7 +1,6 @@
-
 from __future__ import division, print_function, absolute_import
-import multiprocessing as mp
-mp.set_start_method('spawn', force=True)
+import multiprocessing
+multiprocessing.set_start_method('spawn', force=True)
 
 import argparse
 from pybedtools import BedTool
@@ -97,7 +96,7 @@ def get_chrom_labels(inputs):
 
     #create a thread pool to label bins, each task gets assigned a thread 
     pool_inputs=[] 
-    pool=mp.Pool(args.task_threads)
+    pool=Pool(args.task_threads)
     for task_name in bed_and_bigwig_dict:
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
@@ -267,7 +266,7 @@ def genomewide_labels(args):
     processed_first_chrom=False
     #create a Pool to process chromosomes in parallel
     print("creating chromosome thread pool")
-    pool=mp.pool.ThreadPool(args.chrom_threads)
+    pool=ThreadPool(args.chrom_threads)
     pool_args=[]
     chrom_order=[] 
     for index,row in chrom_sizes.iterrows():
