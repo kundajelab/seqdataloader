@@ -6,9 +6,9 @@ import pandas as pd
 import numpy as np
 from .attrib_config import *
 from .utils import *
-from multiprocessing import Pool
+import multiprocessing 
+multiprocessing.set_start_method('spawn', force=True)
 from multiprocessing.pool import ThreadPool
-
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")

@@ -24,7 +24,11 @@ def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_in
         if store_summits is True:
             #we assume standard narrowPeak format where summit is stored in final column
             summit_pos=row[1]+row[nitems_in_row-1]
-            signal_data[summit_pos]=summit_indicator            
+            try:
+                signal_data[summit_pos]=summit_indicator
+            except:
+                print("summit:"+str(summit_pos)+" out of range for chrom size:"+str(signal_data.shape[0]))
+                
     return signal_data 
 
     
