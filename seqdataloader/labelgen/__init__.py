@@ -1,6 +1,8 @@
 from __future__ import division, print_function, absolute_import
 import multiprocessing
 multiprocessing.set_start_method('spawn', force=True)
+from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 
 import argparse
 from pybedtools import BedTool
