@@ -18,7 +18,7 @@ def parse_bigwig_chrom_vals(bigwig_name,chrom,size,store_summits,summit_indicato
 def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_indicator):
     signal_data = np.zeros(size, dtype=np.int)
     chrom_subset_df=narrowPeak_df[narrowPeak_df[0]==chrom]
-    nitems_in_row=chrom_subset_df.shape[1] 
+    nitems_in_row=chrom_subset_df.shape[1]
     for index,row in chrom_subset_df.iterrows():
         signal_data[row[1]:row[2]]=1
         if store_summits is True:

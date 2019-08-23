@@ -7,7 +7,7 @@ import numpy as np
 from .attrib_config import *
 from .utils import *
 import multiprocessing 
-multiprocessing.set_start_method('spawn', force=True)
+#multiprocessing.set_start_method('spawn', force=True)
 from multiprocessing.pool import ThreadPool
 
 def parse_args():
@@ -18,8 +18,6 @@ def parse_args():
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
     parser.add_argument("--chrom_threads",type=int,default=1,help="inner thread pool, launched by task_threads")
     parser.add_argument("--task_threads",type=int,default=1,help="outer thread pool,launched by main thread")
-    parser.add_argument("--store_summits",action="store_true")
-    parser.add_argument("--summit_indicator",type=int,default=2,help="integer value to use as indicator of whether a base pair is a peak summit")
     return parser.parse_args()
 
 def create_new_array(size,
@@ -110,8 +108,6 @@ def process_chrom(inputs):
     data_dict=inputs[3]
     attribute_info=inputs[4]
     overwrite=inputs[5]
-    store_summits=inputs[6]
-    summit_indicator=inputs[7] 
     updating=False
     if tiledb.object_type(array_out_name) == "array":
         if overwrite==False:
@@ -127,7 +123,13 @@ def process_chrom(inputs):
 
     dict_to_write=dict()
     for attribute in data_dict:
-        dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size,store_summits,summit_indicator)
+        store_summits=False
+        summit_indicator=None
+        if 'store_summits' in attribute_info[attribute]:
+            store_summits=attribute_info[attribute]['store_summits']
+        if 'store_summits' is True:
+            summit_indicator=attribute_info[attribute]['summit_indicator']
+            dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size,store_summits,summit_indicator)
         print("got:"+str(attribute)+" for chrom:"+str(chrom))
 
     write_array_to_tiledb(size=size,
@@ -156,7 +158,7 @@ def create_tiledb_array(inputs):
         chrom=row[0]
         size=row[1]
         array_out_name='.'.join([array_outf_prefix,chrom])
-        pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args.overwrite,args.store_summits, args.summit_indicator))
+        pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args.overwrite))
     pool_outputs=pool.map(process_chrom,pool_inputs)
     pool.close()
     pool.join()
@@ -169,8 +171,6 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['chrom_threahds']=1
     vars(args_object)['task_threads']=1
     vars(args_object)['overwrite']=False
-    vars(args_object)['store_summits']=True
-    vars(args_object)['summit_indicator']=2
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
