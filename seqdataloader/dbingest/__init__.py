@@ -7,7 +7,7 @@ import numpy as np
 from .attrib_config import *
 from .utils import *
 import multiprocessing 
-#multiprocessing.set_start_method('spawn', force=True)
+multiprocessing.set_start_method('spawn', force=True)
 from multiprocessing.pool import ThreadPool
 
 def parse_args():

@@ -1,6 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import multiprocessing
-#multiprocessing.set_start_method('spawn', force=True)
+multiprocessing.set_start_method('spawn', force=True)
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 
