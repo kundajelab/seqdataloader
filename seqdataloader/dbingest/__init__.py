@@ -6,9 +6,10 @@ import pandas as pd
 import numpy as np
 from .attrib_config import *
 from .utils import *
-import multiprocessing 
-multiprocessing.set_start_method('spawn', force=True)
+import multiprocessing    
 from multiprocessing.pool import ThreadPool
+from multiprocessing import Pool 
+
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
@@ -66,7 +67,9 @@ def write_array_to_tiledb(size,
         #we are only updating some attributes in the array
         with tiledb.DenseArray(array_out_name,mode='r') as cur_array:
             cur_vals=cur_array[:]
+        print('got cur vals') 
         for key in dict_to_write:
+            print('key') 
             cur_vals[key]=dict_to_write[key]
         dict_to_write=cur_vals
         print("updated data dict for writing") 
@@ -77,10 +80,13 @@ def write_array_to_tiledb(size,
             if attrib not in dict_to_write:
                 dict_to_write[attrib]=np.full(size,np.nan)
     print("finalizing the write")
-    with tiledb.DenseArray(array_out_name, mode='w') as out_array:
-            out_array[:]=dict_to_write
+    out_array=tiledb.DenseArray(array_out_name,mode='w')
+    print("made array") 
+    out_array[:]=dict_to_write
+    print("wrote dict") 
+    out_array.close()
     print("done writing")
-    return
+    return "done!!" 
 
 def extract_metadata_field(row,field):
     dataset=row['dataset'] 
@@ -127,11 +133,13 @@ def process_chrom(inputs):
         summit_indicator=None
         if 'store_summits' in attribute_info[attribute]:
             store_summits=attribute_info[attribute]['store_summits']
-        if 'store_summits' is True:
+        print("store_summits:"+str(store_summits))
+        if 'summit_indicator' in attribute_info[attribute]: 
             summit_indicator=attribute_info[attribute]['summit_indicator']
-            dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size,store_summits,summit_indicator)
+        print("summit_indicator:"+str(summit_indicator))
+        dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size,store_summits,summit_indicator)
         print("got:"+str(attribute)+" for chrom:"+str(chrom))
-
+    
     write_array_to_tiledb(size=size,
                           dict_to_write=dict_to_write,
                           array_out_name=array_out_name,
@@ -151,7 +159,6 @@ def create_tiledb_array(inputs):
     dataset=row['dataset']    
     #read in filenames for bigwigs
     data_dict=open_data_for_parsing(row,attribute_info)
-    pool=ThreadPool(args.chrom_threads)
     pool_inputs=[] 
     array_outf_prefix="/".join([args.tiledb_group,dataset])
     for index, row in chrom_sizes.iterrows():
@@ -159,9 +166,12 @@ def create_tiledb_array(inputs):
         size=row[1]
         array_out_name='.'.join([array_outf_prefix,chrom])
         pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args.overwrite))
-    pool_outputs=pool.map(process_chrom,pool_inputs)
-    pool.close()
-    pool.join()
+    
+    with ThreadPool(args.chrom_threads) as pool:
+        pool_outputs=pool.apply(process_chrom,pool_inputs)
+        pool.close()
+        pool.join()
+    print(pool_outputs) 
     return "done"
 
 def args_object_from_args_dict(args_dict):
@@ -186,7 +196,6 @@ def ingest(args):
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
     print("loaded chrom sizes")
-    pool=ThreadPool(args.task_threads)
     pool_inputs=[] 
     #check if the tiledb_group exists, and if not, create it
     if tiledb.object_type(args.tiledb_group) is not 'group':        
@@ -195,19 +204,25 @@ def ingest(args):
     else:
         group_uri=args.tiledb_group
         print("tiledb group already exists")
-        
     for index,row in tiledb_metadata.iterrows():
         pool_inputs.append([row,args,chrom_sizes,attribute_info])        
-    task_returns=pool.map(create_tiledb_array,pool_inputs)
-    pool.close()
-    pool.join()
-
+        
+    with ThreadPool(args.task_threads) as pool:
+        task_returns=pool.apply(create_tiledb_array,pool_inputs)
+        pool.close()
+        pool.join()
+    print(task_returns)
+    
 def main():
     args=parse_args()
     ingest(args)
     
     
 if __name__=="__main__":
+    try:
+        multiprocessing.set_start_method('spawn')
+    except:
+        print("context already set") 
     main() 
     
     

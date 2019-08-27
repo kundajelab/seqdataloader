@@ -1,9 +1,4 @@
 from __future__ import division, print_function, absolute_import
-import multiprocessing
-multiprocessing.set_start_method('spawn', force=True)
-from multiprocessing import Pool
-from multiprocessing.pool import ThreadPool
-
 import argparse
 from pybedtools import BedTool
 import pyBigWig 
@@ -16,6 +11,9 @@ from .classification_label_protocols import *
 from .regression_label_protocols import * 
 import gzip 
 import os
+import multiprocessing    
+from multiprocessing.pool import ThreadPool
+from multiprocessing import Pool 
 
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
@@ -74,6 +72,7 @@ def get_labels_one_task(inputs):
     return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,task_ambig,chrom,first_coord,final_coord,args)    
     
 def get_chrom_labels(inputs):
+
     #unravel inputs 
     chrom=inputs[0]
     chrom_size=inputs[1]
@@ -97,16 +96,17 @@ def get_chrom_labels(inputs):
     print("pre-allocated df for chrom:"+str(chrom)+"with dimensions:"+str(chrom_df.shape))
 
     #create a thread pool to label bins, each task gets assigned a thread 
-    pool_inputs=[] 
-    pool=Pool(args.task_threads)
+    pool_inputs=[]
     for task_name in bed_and_bigwig_dict:
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
         task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
         pool_inputs.append((task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args))
-    bin_values=pool.map_async(get_labels_one_task,pool_inputs)
-    pool.close()
-    pool.join()
+
+    with Pool(args.task_threads) as pool: 
+        bin_values=pool.map_async(get_labels_one_task,pool_inputs)
+        pool.close()
+        pool.join()
     
     for task_name,task_labels in bin_values.get():
         if task_labels is None:
@@ -267,8 +267,6 @@ def genomewide_labels(args):
 
     processed_first_chrom=False
     #create a Pool to process chromosomes in parallel
-    print("creating chromosome thread pool")
-    pool=ThreadPool(args.chrom_threads)
     pool_args=[]
     chrom_order=[] 
     for index,row in chrom_sizes.iterrows():
@@ -284,10 +282,11 @@ def genomewide_labels(args):
         chrom_order.append(chrom) 
         chrom_size=row[1]
         pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
-    print("launching thread pool")
-    processed_chrom_outputs=pool.map_async(get_chrom_labels,pool_args)
-    pool.close()
-    pool.join()
+    print("creating chromosome thread pool")
+    with ThreadPool(args.chrom_threads) as pool: 
+        processed_chrom_outputs=pool.map_async(get_chrom_labels,pool_args)
+        pool.close()
+        pool.join()
 
     #if the user is happy with separate files for each chromosome, these have already been written to disk. We are done 
     if args.split_output_by_chrom==True:
@@ -307,4 +306,8 @@ def main():
     genomewide_labels(args)
     
 if __name__=="__main__":
+    try:
+        multiprocessing.set_start_method('spawn')
+    except:
+        print("context already set") 
     main()

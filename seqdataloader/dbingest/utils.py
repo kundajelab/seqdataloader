@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import pyBigWig
 
+
 def open_bigwig_for_parsing(fname):
     #return pyBigWig.open(fname)
     return fname
@@ -19,16 +20,20 @@ def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_in
     signal_data = np.zeros(size, dtype=np.int)
     chrom_subset_df=narrowPeak_df[narrowPeak_df[0]==chrom]
     nitems_in_row=chrom_subset_df.shape[1]
+    if (store_summits==True) and (chrom_subset_df.shape[1]<10):
+        print("warning! dataset does not have 10 columns of the standard narrowPeak format, falling back to peak centers")
     for index,row in chrom_subset_df.iterrows():
         signal_data[row[1]:row[2]]=1
         if store_summits is True:
-            #we assume standard narrowPeak format where summit is stored in final column
-            summit_pos=row[1]+row[nitems_in_row-1]
+            if len(row)<10:
+                summit_pos=int(round(row[1]+0.5*(row[2]-row[1])))
+            else: 
+                summit_pos=row[1]+row[nitems_in_row-1]
             try:
                 signal_data[summit_pos]=summit_indicator
-            except:
-                print("summit:"+str(summit_pos)+" out of range for chrom size:"+str(signal_data.shape[0]))
-                
+            except Exception as e:
+                print(e)
+                raise Exception() 
     return signal_data 
 
     
