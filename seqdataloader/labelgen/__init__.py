@@ -11,10 +11,7 @@ from .classification_label_protocols import *
 from .regression_label_protocols import * 
 import gzip 
 import os
-import multiprocessing    
-from multiprocessing.pool import ThreadPool
-from multiprocessing import Pool 
-
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
 labeling_approaches={
@@ -69,6 +66,7 @@ def get_labels_one_task(inputs):
     final_coord=inputs[6]
     args=inputs[7]
     #determine the appropriate labeling approach
+    print("in get_labels_one_task") 
     return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,task_ambig,chrom,first_coord,final_coord,args)    
     
 def get_chrom_labels(inputs):
@@ -103,12 +101,10 @@ def get_chrom_labels(inputs):
         task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
         pool_inputs.append((task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args))
 
-    with Pool(args.task_threads) as pool: 
-        bin_values=pool.map_async(get_labels_one_task,pool_inputs)
-        pool.close()
-        pool.join()
+    with ProcessPoolExecutor(max_workers=args.task_threads) as pool: 
+        bin_values=pool.map(get_labels_one_task,pool_inputs)
     
-    for task_name,task_labels in bin_values.get():
+    for task_name,task_labels in bin_values:
         if task_labels is None:
             continue
         chrom_df[task_name]=task_labels
@@ -283,16 +279,14 @@ def genomewide_labels(args):
         chrom_size=row[1]
         pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
     print("creating chromosome thread pool")
-    with ThreadPool(args.chrom_threads) as pool: 
-        processed_chrom_outputs=pool.map_async(get_chrom_labels,pool_args)
-        pool.close()
-        pool.join()
+    with ProcessPoolExecutor(max_workers=args.chrom_threads) as pool: 
+        processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
 
     #if the user is happy with separate files for each chromosome, these have already been written to disk. We are done 
     if args.split_output_by_chrom==True:
         exit()
     mode='w'
-    for chrom, chrom_df in processed_chrom_outputs.get():
+    for chrom, chrom_df in processed_chrom_outputs:
         #write to output file!
         if chrom_df is None:
             continue 
@@ -306,8 +300,8 @@ def main():
     genomewide_labels(args)
     
 if __name__=="__main__":
-    try:
-        multiprocessing.set_start_method('spawn')
-    except:
-        print("context already set") 
+    #try:
+    #    multiprocessing.set_start_method('spawn')
+    #except:
+    #    print("context already set") 
     main()
