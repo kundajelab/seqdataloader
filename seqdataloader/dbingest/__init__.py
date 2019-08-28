@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from .attrib_config import *
 from .utils import *
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 import pdb
 
 def parse_args():
@@ -70,7 +70,8 @@ def write_chunk(inputs):
     sub_dict=inputs[3]
     batch_size=inputs[4]
     print("start:"+str(start)+", end:"+str(end))
-    with tiledb.DenseArray(array_out_name,mode='w') as out_array: 
+    ctx = tiledb.Ctx()
+    with tiledb.DenseArray(array_out_name,ctx=ctx,mode='w') as out_array: 
         #sub_df=df.iloc[start:end]
         #sub_dict=sub_df.to_dict(orient='list')
         out_array[start:end]=sub_dict
@@ -110,7 +111,7 @@ def write_array_to_tiledb(size,
         pool_inputs.append((array_out_name,i,i+batch_size,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
     pool_inputs.append((array_out_name,i+batch_size,num_entries,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
     
-    with ThreadPoolExecutor(max_workers=write_threads) as pool:
+    with ProcessPoolExecutor(max_workers=write_threads) as pool:
         print("made pool")
         futures=pool.map(write_chunk,pool_inputs)
     print("done writing")
@@ -202,7 +203,7 @@ def create_tiledb_array(inputs):
         array_out_name='.'.join([array_outf_prefix,chrom])
         pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args))
     try:
-        with ThreadPoolExecutor(max_workers=args.chrom_threads) as pool:
+        with ProcessPoolExecutor(max_workers=args.chrom_threads) as pool:
             cur_futures=pool.map(process_chrom,pool_inputs)
         for entry in pool_inputs:
             result=process_chrom(entry)
@@ -243,7 +244,7 @@ def ingest(args):
     for index,row in tiledb_metadata.iterrows():
         pool_inputs.append([row,args,chrom_sizes,attribute_info])
     try:
-        with ThreadPoolExecutor(max_workers=args.task_threads) as pool:
+        with ProcessPoolExecutor(max_workers=args.task_threads) as pool:
             results=pool.map(create_tiledb_array,pool_inputs)
         #the lines below are kept in case we need to get rid of the pooled multiprocessing
         # at any point 
