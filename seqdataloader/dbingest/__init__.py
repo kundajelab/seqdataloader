@@ -204,8 +204,8 @@ def create_tiledb_array(inputs):
     try:
         with ThreadPoolExecutor(max_workers=args.chrom_threads) as pool:
             cur_futures=pool.map(process_chrom,pool_inputs)
-        #for entry in pool_inputs:
-        #    result=process_chrom(entry)
+        for entry in pool_inputs:
+            result=process_chrom(entry)
     except Exception as e:
         raise e 
     return "done"
@@ -245,6 +245,8 @@ def ingest(args):
     try:
         with ThreadPoolExecutor(max_workers=args.task_threads) as pool:
             results=pool.map(create_tiledb_array,pool_inputs)
+        #the lines below are kept in case we need to get rid of the pooled multiprocessing
+        # at any point 
         #for entry in pool_inputs:
         #    result=create_tiledb_array(entry)
     except Exception as e:
