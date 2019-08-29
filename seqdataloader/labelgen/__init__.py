@@ -123,7 +123,7 @@ def get_bed_and_bigwig_dict(tasks):
         bed_and_bigwig_dict[task_name]=dict()
         
         #get the peak file associated with the task (if provided)
-        if pd.isna(row[0]):
+        if pd.isna(row[1]):
             task_bed=None
         else:
             assert os.path.exists(row[1])
