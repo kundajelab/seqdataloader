@@ -6,5 +6,6 @@ db_ingest --tiledb_metadata tasks.dbingest.tsv \
     --chrom_threads 25 \
     --task_threads 1 \
     --store_summits \
+    --write_threads 1 \
     --summit_indicator 2
 
