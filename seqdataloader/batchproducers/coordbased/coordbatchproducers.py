@@ -92,7 +92,6 @@ class BedFileObj(self):
             prev_entry = entry
             
 
-
 class DownsampleNegativesCoordsBatchProducer(
         KerasSequenceApiCoordsBatchProducer):
 
@@ -102,7 +101,7 @@ class DownsampleNegativesCoordsBatchProducer(
         print("Reading in positive bed file")
         self.pos_bedfileobj = BedFileObj(bed_file=pos_bed_file)
         print("Got",len(self.pos_bedfileobj.coords_list)
-              " coords in positive bed file")
+              +" coords in positive bed file")
         print("Reading in negative bed file")
         self.neg_bedfileobj = BedFileObj(bed_file=neg_bed_file)
         print("Got",len(self.neg_bedfileobj.coords_list)
@@ -138,8 +137,7 @@ class DownsampleNegativesCoordsBatchProducer(
         #get negative set with potentially different stride
         self.coords_list = self._get_coordslist()
         #perform shuffling as needed
-        super(KerasSequenceApiCoordsBatchProducer, self).on_epoch_end()
-        
+        super(KerasSequenceApiCoordsBatchProducer, self).on_epoch_end()        
 
 
 class SimpleCoordsBatchProducer(KerasSequenceApiCoordsBatchProducer):
