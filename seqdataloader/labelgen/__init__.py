@@ -174,14 +174,14 @@ def get_indices(chrom,chrom_size,args):
     return pd.Series(chroms),pd.Series(start_pos),pd.Series(end_pos),first_bin_start,final_bin_start 
 
 
-def write_output(task_names,full_df,args,mode='w',task_split_engaged=False,outf=None):
+def write_output(task_names,full_df,first_chrom,args,mode='w',task_split_engaged=False,outf=None):
     '''
     Save genome-wide labels to disk in gzip, hdf5, or pkl format 
     '''
     if (args.split_output_by_task==True) and (task_split_engaged==False) :
         for task in task_names:
             task_df=full_df[['CHR','START','END',task]]
-            write_output([task],task_df,args,mode=mode,task_split_engaged=True,outf=task.replace('/','.')+"."+args.outf)
+            write_output([task],task_df,first_chrom,args,mode=mode,task_split_engaged=True,outf=task.replace('/','.')+"."+args.outf)
         return
     if outf==None:
         outf=args.outf        
@@ -193,14 +193,20 @@ def write_output(task_names,full_df,args,mode='w',task_split_engaged=False,outf=
     if args.store_values_above_thresh is not None:
         all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]<=args.store_values_above_thresh).all(1)]
         full_df=full_df[(full_df[task_names]>args.store_values_above_thresh).any(1)]
+        
+    #determine if header needs to be stored
+    if first_chrom is True:
+        header=True
+    else:
+        header=False
     if args.output_type=="gzip":
-        full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
+        full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
         if all_negative_df is not None:
-            all_negative_df.to_csv("universal_negatives."+outf,sep='\t',header=True,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
+            all_negative_df.to_csv("universal_negatives."+outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
     elif args.output_type=="bz2":
-        full_df.to_csv(outf,sep='\t',header=True,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
+        full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
         if all_negative_df is not None:
-            all_negative_df.to_csv("universal_negatives."+outf,sep='\t',header=True,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
+            all_negative_df.to_csv("universal_negatives."+outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
         full_df=full_df.set_index(['CHR','START','END'])
         if mode=='w':
@@ -286,12 +292,14 @@ def genomewide_labels(args):
     if args.split_output_by_chrom==True:
         exit()
     mode='w'
+    first_chrom=True
     for chrom, chrom_df in processed_chrom_outputs:
         #write to output file!
         if chrom_df is None:
             continue 
         print("writing output chromosomes:"+str(chrom))
-        write_output(tasks[0],chrom_df,args,mode=mode)
+        write_output(tasks[0],chrom_df,first_chrom,args,mode=mode)
+        first_chrom=False
         mode='a'
     print("done!")
     
