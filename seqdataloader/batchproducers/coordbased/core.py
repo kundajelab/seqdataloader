@@ -1,33 +1,10 @@
 from __future__ import division, print_function, absolute_import
+from collections import namedtuple
 import keras
 
 
-class Coordinates(object):
-    
-    def __init__(self, chrom, start, end, isplusstrand=True):
-        """
-        Args:
-            chrom (string)
-            start (int)
-            end (int)
-            isplusstrand (boolean, optional): default True
-            
-        """
-        self.chrom = chrom
-        self.start = start
-        self.end = end
-        self.isplusstrand = isplusstrand
-    
-    def __str__(self):
-       return (self.chrom+":"+str(self.isplusstrand)+":"
-               +str(self.start)+"-"+str(self.end))
-    
-    def __repr__(self):
-       return self.__str__()
-    
-    def get_revcomp(self):
-        return Coordinates(chrom=self.chrom, start=self.start, end=self.end,
-                           isplusstrand=(self.isplusstrand==False))
+Coordinates = namedtuple("Coordinates",
+                        ["chrom", "start", "end", "isplusstrad"])
 
 
 def apply_mask(tomask, mask):

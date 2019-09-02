@@ -1,6 +1,12 @@
 from __future__ import division, print_function, absolute_import
-from .core import Coordinates
+from .core import Coordinates, get_revcomp
 import numpy as np
+
+
+def get_revcomp(coordinate):
+    return Coordinates(chrom=coordinate.chrom,
+                       start=coordinate.start, end=coordinate.end,
+                       isplusstrand=(coordinate.isplusstrand==False))
 
 
 class AbstractCoordBatchTransformer(object):
@@ -26,7 +32,7 @@ class ReverseComplementAugmenter(AbstractCoordBatchTransformer):
             of the original coordinates at the end
     """
     def __call__(self, coords):
-        return coords + [x.get_revcomp() for x in coords]
+        return coords + [get_revcomp(x) for x in coords]
       
       
 class UniformJitter(AbstractCoordBatchTransformer):
