@@ -54,7 +54,7 @@ class KerasSequenceApiCoordsBatchProducer(object):
             self._shuffle_coords_list()
 
 
-class BedFileObj(self):
+class BedFileObj(object):
     def __init__(self, bed_file, hastitle=False):
         print("Heads up: coordinates in bed file"
               +" are assumed to be on the positive strand;"
