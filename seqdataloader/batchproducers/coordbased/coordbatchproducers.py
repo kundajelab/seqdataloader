@@ -66,8 +66,9 @@ class BedFileObj(object):
 
     def _read_bed_file(self):
         coords_list = []
-        for linenum,line in enumerate((gzip.open(bed_file) if ".gz"
-                             in bed_file else open(bed_file))):
+        for linenum,line in enumerate((gzip.open(self.bed_file) if ".gz"
+                                       in self.bed_file
+                                       else open(self.bed_file))):
             if (linenum > 0 or self.hastitle==False):
                 (chrom, start_str, end_str) =\
                   line.decode("utf-8").rstrip().split("\t")[0:3]
