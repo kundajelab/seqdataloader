@@ -6,6 +6,7 @@ import keras
 Coordinates = namedtuple("Coordinates",
                          ["chrom", "start", "end", "isplusstrad"],
                          defaults=[True])
+Coordinates.__new__.__defaults__ = (True,)
 
 
 def apply_mask(tomask, mask):
