@@ -4,7 +4,8 @@ import keras
 
 
 Coordinates = namedtuple("Coordinates",
-                        ["chrom", "start", "end", "isplusstrad"])
+                         ["chrom", "start", "end", "isplusstrad"],
+                         defaults=[True])
 
 
 def apply_mask(tomask, mask):
