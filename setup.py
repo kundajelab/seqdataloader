@@ -8,9 +8,10 @@ config = {
     'version': '0.126',
     'packages': ['seqdataloader'],
     'setup_requires': [],
-    'install_requires': ['numpy>=1.15','pandas>=0.23.4','cython>=0.27.3','deeptools>=3.0.1','pybedtools>=0.7','pyBigWig>=0.3.2', 'pyfaidx'],
+    'install_requires': ['numpy>=1.15','pandas>=0.23.4','cython>=0.27.3','deeptools>=3.0.1','pybedtools>=0.7','pyBigWig>=0.3.7', 'pyfaidx'],
     'scripts': [],
-    'entry_points': {'console_scripts': ['genomewide_labels=seqdataloader.__init__:main']},
+    'entry_points': {'console_scripts': ['genomewide_labels=seqdataloader.labelgen.__init__:main',
+                                         'db_ingest=seqdataloader.dbingest.__init__:main']},
     'name': 'seqdataloader'
 }
 

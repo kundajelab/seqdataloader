@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-from . import batchproducers
 import argparse
 from pybedtools import BedTool
 import pyBigWig 
@@ -10,11 +9,9 @@ import csv
 import sys
 from .classification_label_protocols import *
 from .regression_label_protocols import * 
-from multiprocessing import Pool
-from multiprocessing.pool import ThreadPool
 import gzip 
 import os
-
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
 labeling_approaches={
@@ -40,8 +37,10 @@ def parse_args():
     parser.add_argument("--left_flank",type=int,default=400,help="left flank")
     parser.add_argument("--right_flank",type=int,default=400,help="right flank")
     parser.add_argument("--bin_size",type=int,default=200,help="flank around bin center where peak summit falls in a positive bin")
-    parser.add_argument("--threads",type=int,default=4,help="Number of chromosomes to process at once.")
-    parser.add_argument("--subthreads",type=int,default=1,help="Number of tasks to process at once for a given chromosome")
+
+    parser.add_argument("--task_threads",type=int,default=1,help="Number of tasks to process for a given chromosome.")
+    parser.add_argument("--chrom_threads",type=int,default=4,help="Number of chromosomes to process at once.")
+    parser.add_argument("--bigwig_stats",choices=['mean','min','max','coverage','std'],default='mean',help="Value to extract from bigwig file")
     parser.add_argument("--overlap_thresh",type=float,default=0.5,help="minimum percent of bin that must overlap a peak for a positive label")
     parser.add_argument("--allow_ambiguous",default=False,action="store_true")
     parser.add_argument("--store_positives_only",default=False,action="store_true")
@@ -67,9 +66,11 @@ def get_labels_one_task(inputs):
     final_coord=inputs[6]
     args=inputs[7]
     #determine the appropriate labeling approach
+    print("in get_labels_one_task") 
     return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,task_ambig,chrom,first_coord,final_coord,args)    
     
 def get_chrom_labels(inputs):
+
     #unravel inputs 
     chrom=inputs[0]
     chrom_size=inputs[1]
@@ -93,16 +94,15 @@ def get_chrom_labels(inputs):
     print("pre-allocated df for chrom:"+str(chrom)+"with dimensions:"+str(chrom_df.shape))
 
     #create a thread pool to label bins, each task gets assigned a thread 
-    pool_inputs=[] 
-    pool=Pool(args.subthreads)
+    pool_inputs=[]
     for task_name in bed_and_bigwig_dict:
         task_bed=bed_and_bigwig_dict[task_name]['bed']
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
         task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
         pool_inputs.append((task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args))
-    bin_values=pool.map(get_labels_one_task,pool_inputs)
-    pool.close()
-    pool.join()
+
+    with ProcessPoolExecutor(max_workers=args.task_threads) as pool: 
+        bin_values=pool.map(get_labels_one_task,pool_inputs)
     
     for task_name,task_labels in bin_values:
         if task_labels is None:
@@ -123,7 +123,7 @@ def get_bed_and_bigwig_dict(tasks):
         bed_and_bigwig_dict[task_name]=dict()
         
         #get the peak file associated with the task (if provided)
-        if pd.isna(row[0]):
+        if pd.isna(row[1]):
             task_bed=None
         else:
             assert os.path.exists(row[1])
@@ -230,14 +230,15 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['left_flank']=400
     vars(args_object)['right_flank']=400
     vars(args_object)['bin_size']=200
-    vars(args_object)['threads']=1
-    vars(args_object)['subthreads']=4
+    vars(args_object)['chrom_threads']=4
+    vars(args_object)['task_threads']=1
     vars(args_object)['overlap_thresh']=0.5
     vars(args_object)['allow_ambiguous']=True
     vars(args_object)['store_positives_only']=False
     vars(args_object)['store_values_above_thresh']=None
     vars(args_object)['output_hdf5_low_mem']=False
     vars(args_object)['task_list_sep']='\t'
+    vars(args_object)['bigwig_stats']='mean'
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
@@ -262,8 +263,6 @@ def genomewide_labels(args):
 
     processed_first_chrom=False
     #create a Pool to process chromosomes in parallel
-    print("creating chromosome thread pool")
-    pool=ThreadPool(args.threads)
     pool_args=[]
     chrom_order=[] 
     for index,row in chrom_sizes.iterrows():
@@ -279,10 +278,9 @@ def genomewide_labels(args):
         chrom_order.append(chrom) 
         chrom_size=row[1]
         pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
-    print("launching thread pool")
-    processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
-    pool.close()
-    pool.join()
+    print("creating chromosome thread pool")
+    with ProcessPoolExecutor(max_workers=args.chrom_threads) as pool: 
+        processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
 
     #if the user is happy with separate files for each chromosome, these have already been written to disk. We are done 
     if args.split_output_by_chrom==True:
@@ -302,4 +300,8 @@ def main():
     genomewide_labels(args)
     
 if __name__=="__main__":
+    #try:
+    #    multiprocessing.set_start_method('spawn')
+    #except:
+    #    print("context already set") 
     main()

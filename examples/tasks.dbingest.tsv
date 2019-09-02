@@ -1,0 +1,2 @@
+dataset	idr_peak	fc_bigwig	ambig_peak
+ENCFF209DJG	https://www.encodeproject.org/files/ENCFF209DJG/@@download/ENCFF209DJG.bed.gz	https://www.encodeproject.org/files/ENCFF842XRQ/@@download/ENCFF842XRQ.bigWig	hg38.blacklist.bed.gz
