@@ -16,7 +16,7 @@ class SimpleLookup(AbstractSingleNdarrayCoordsToVals):
         for line in (gzip.open(self.lookup_file) if ".gz"
                      in self.lookup_file else open(self.lookup_file)):
             (chrom, start_str, end_str, *labels) =\
-              line.decode("utf-8").rstrip().split("\t")[0:3]
+              line.decode("utf-8").rstrip().split("\t")
             coord = Coordinates(chrom=chrom,
                                 start=int(start_str),
                                 end=int(end_str))
