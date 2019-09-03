@@ -30,7 +30,7 @@ class KerasBatchGenerator(keras.utils.Sequence):
     def __init__(self, coordsbatch_producer,
                        inputs_coordstovals,
                        targets_coordstovals,
-                       coordsbatch_transformer,
+                       coordsbatch_transformer=None,
                        qc_func=None,
                        sampleweights_coordstovals=None,
                        sampleweights_from_inputstargets=None):
