@@ -151,7 +151,7 @@ class SimpleCoordsBatchProducer(KerasSequenceApiCoordsBatchProducer):
     def __init__(self, bed_file,
                        hastitle=False,
                        coord_batch_transformer=None):  
-        self.bed_file = BedFile(bed_file=bed_file, hastitle=hastitle)
+        self.bed_file = BedFileObj(bed_file=bed_file, hastitle=hastitle)
         self.batch_size = batch_size
         if (coord_batch_transformer is not None):
             raise DeprecationWarning(
