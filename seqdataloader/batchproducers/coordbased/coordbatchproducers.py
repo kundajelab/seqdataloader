@@ -118,11 +118,8 @@ class DownsampleNegativesCoordsBatchProducer(
               +" to be subsampled by a factor of",self.subsample_factor,
               "which will result in a proportion of",
               int(len(self.neg_bedfileobj.coords_list)/self.subsample_factor))
-
         self.last_used_offset = -1
-
-        super(KerasSequenceApiCoordsBatchProducer, self).__init__(
-              self, **kwargs)
+        super(DownsampleNegativesCoordsBatchProducer, self).__init__(**kwargs)
 
     def _get_coordslist(self):
         self.last_used_offset += 1
