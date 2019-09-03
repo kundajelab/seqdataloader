@@ -162,8 +162,7 @@ class SimpleCoordsBatchProducer(KerasSequenceApiCoordsBatchProducer):
              +" implementations to be used with the same"
              +" coords_batch_transformer code.")
         self.coord_batch_transformer = coord_batch_transformer
-        super(SimpleCoordsBatchProducer, self).__init__(
-              self, **kwargs)
+        super(SimpleCoordsBatchProducer, self).__init__(**kwargs)
 
     def _get_coordslist(self):
         return [x for x in self.bed_file.coords_list]
