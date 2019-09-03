@@ -7,7 +7,8 @@ import gzip
 
 class SimpleLookup(AbstractSingleNdarrayCoordsToVals):
 
-    def __init__(self, lookup_file, default_returnval=0.0):
+    def __init__(self, lookup_file, default_returnval=0.0, **kwargs):
+        super(SimpleLookup, self).__init__(**kwargs)
         self.lookup_file = lookup_file
         self.default_returnval = default_returnval
         self.lookup = {}
