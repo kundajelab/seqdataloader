@@ -123,6 +123,7 @@ class DownsampleNegativesCoordsBatchProducer(
 
     def _get_coordslist(self):
         self.last_used_offset += 1
+        self.last_used_offset = self.last_used_offset%self.subsample_factor
         print("Using an offset of ",self.last_used_offset," before striding")
         self.last_used_offset = self.last_used_offset%self.subsample_factor
         subsampled_neg_coords = self.neg_bedfileobj.get_strided_subsample(
