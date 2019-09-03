@@ -4,7 +4,7 @@ import keras
 
 
 Coordinates = namedtuple("Coordinates",
-                         ["chrom", "start", "end", "isplusstrad"])
+                         ["chrom", "start", "end", "isplusstrand"])
 Coordinates.__new__.__defaults__ = (True,)
 
 
