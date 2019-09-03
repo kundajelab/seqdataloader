@@ -135,7 +135,7 @@ class DownsampleNegativesCoordsBatchProducer(
         #get negative set with potentially different stride
         self.coords_list = self._get_coordslist()
         #perform shuffling as needed
-        super(KerasSequenceApiCoordsBatchProducer, self).on_epoch_end()        
+        super(DownsampleNegativesCoordsBatchProducer, self).on_epoch_end()        
 
 
 class SimpleCoordsBatchProducer(KerasSequenceApiCoordsBatchProducer):
