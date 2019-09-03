@@ -14,7 +14,7 @@ class KerasSequenceApiCoordsBatchProducer(object):
         seed (int): default 1234; needed if shuffle=True
     """
     def __init__(self, batch_size, shuffle_before_epoch, seed):
-        self.coords_list = self._get_coords_list()
+        self.coords_list = self._get_coordslist()
         self.batch_size = batch_size
         self.shuffle_before_epoch = shuffle_before_epoch
         self.seed = seed
@@ -22,7 +22,7 @@ class KerasSequenceApiCoordsBatchProducer(object):
             self.rng = np.random.RandomState(self.seed)
             self._shuffle_coords_list()
 
-    def _get_coords_list(self):
+    def _get_coordslist(self):
         raise NotImplementedError()
     
     def _shuffle_coords_list(self):
