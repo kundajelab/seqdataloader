@@ -81,7 +81,7 @@ class BedFileObj(object):
         return len(self.coords_list)
 
     def get_strided_subsample(self, offset, stride):
-        return coords_list[offset::stride]
+        return self.coords_list[offset::stride]
 
     def assert_sorted(self):
         prev_entry = self.coords_list[0]
