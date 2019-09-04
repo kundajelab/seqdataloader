@@ -248,6 +248,8 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['output_hdf5_low_mem']=False
     vars(args_object)['task_list_sep']='\t'
     vars(args_object)['bigwig_stats']='mean'
+    vars(args_object)['label_transformer']='asinh'
+    vars(args_object)['label_transformer_pseudocount']=0.001 
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 

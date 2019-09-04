@@ -6,13 +6,13 @@ import numpy as np
 from pybedtools import BedTool
 import pyBigWig
 
-def transform_label_vals(labels,label_tranformer,pseudocount=0.001):
+def transform_label_vals(labels,label_transformer,pseudocount=0.001):
     if label_transformer is None:
         return labels
     elif label_transformer=="None":
         return labels 
     elif label_transformer == 'asinh':
-        return np.asinh(labels)
+        return np.arcsinh(labels)
     elif label_transformer == 'log10':
         return np.log10(labels+pseudocount)
     elif label_transformer == 'log':
