@@ -50,6 +50,9 @@ def parse_args():
                                                        "peak_summit_in_bin_regression",
                                                        "peak_percent_overlap_with_bin_regression",
                                                        "all_genome_bins_regression"])
+    parser.add_argument("--label_transformer",default="asinh",help="type of transformation to apply to the labels; one of None, asinh, log10, log")
+    parser.add_argument("--label_transformer_pseudocount",type=float,default=0.001,help="pseudocount to add to values if using log10 or log label transformations")
+    
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
         sys.exit(1)       
