@@ -112,7 +112,8 @@ class DownsampleNegativesCoordsBatchProducer(
         self.target_proportion_positives = target_proportion_positives
         self.subsample_factor = int(np.ceil(
             (len(self.neg_bedfileobj.coords_list)
-             *self.target_proportion_positives)/
+             *(self.target_proportion_positives/
+               (1-self.target_proportion_positives)) )/
             len(self.pos_bedfileobj.coords_list)))
         print("The target proportion of positives of",
               self.target_proportion_positives,"requires the negative set"
