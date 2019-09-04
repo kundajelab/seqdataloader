@@ -127,7 +127,7 @@ class DownsampleNegativesCoordsBatchProducer(
         self.rng.shuffle(self.subsampled_neg_coords)
         self.rng.shuffle(self.pos_coords)
         fracpos = len(self.pos_coords)/(
-                    self.pos_coords + self.subsampled_neg_coords)
+                    len(self.pos_coords) + len(self.subsampled_neg_coords))
         #interleave evenly
         pos_included = 0
         neg_included = 0
