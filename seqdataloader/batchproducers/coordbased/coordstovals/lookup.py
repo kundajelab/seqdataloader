@@ -24,7 +24,7 @@ class SimpleLookup(AbstractSingleNdarrayCoordsToVals):
                                 start=int(start_str),
                                 end=int(end_str))
             labels = [self.transformation(float(x)) for x in labels] 
-            self.lookup[coord] = labels
+            self.lookup[(coord.chrom, coord.start, coord.end)] = labels
             if (self.num_labels is None):
                 self.num_labels = len(labels)
             else:
@@ -34,9 +34,10 @@ class SimpleLookup(AbstractSingleNdarrayCoordsToVals):
     def _get_ndarray(self, coors):
         to_return = []
         for coor in coors:
-            if coor not in self.lookup:
+            if (coor.chrom, coor.start, coor.end) not in self.lookup:
                 to_return.append(np.ones(self.num_labels)
                                  *self.default_returnval)
             else:
-                to_return.append(self.lookup[coor])
+                to_return.append(
+                    self.lookup[(coor.chrom, coor.start, coor.end)])
         return np.array(to_return)
