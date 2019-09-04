@@ -28,11 +28,26 @@ genomewide_labels --task_list tasks.tsv \
 		  --left_flank 400 \
 		  --right_flank 400 \
 		  --bin_size 200 \
-		  --threads 10 \
-		  --subthreads 4 \
+		  --task_hreads 10 \
+		  --chrom_threads 4 \
 		  --allow_ambiguous \
 		  --labeling_approach peak_summit_in_bin_classification 
 ```
+And for regression: 
+```
+genomewide_labels --task_list tasks.tsv \
+       --outf regressionlabels.allbins.hg38.hdf5 \
+       --output_type hdf5 \
+       --chrom_sizes hg38.chrom.sizes \
+       --bin_stride 50 \
+       --left_flank 400 \
+       --right_flank 400 \
+       --chrom_threads 24 \
+       --task_threads 2 \
+       --label_transformer asinh \ one of None, asinh, log10, log, default is asinh 
+       --labeling_approach all_genome_bins_regression
+```
+
 labeling_approach can be one of:
 
     "peak_summit_in_bin_classification"
@@ -80,8 +95,8 @@ classification_params={
     'left_flank':400,
     'right_flank':400,
     'bin_size':200,
-    'threads':10,
-    'subthreads':4,
+    'chrom_threads':10,
+    'task_threads':4,
     'allow_ambiguous':True,
     'labeling_approach':'peak_summit_in_bin_classification'
     }
@@ -98,9 +113,11 @@ regression_params={
     'left_flank':400,
     'right_flank':400,
     'bin_size':200,
-    'threads':10,
-    'subthreads':4,
-    'labeling_approach':'all_genome_bins_regression'
+    'chrom_threads':10,
+    'task_threads':4,
+    'labeling_approach':'all_genome_bins_regression',
+    'label_transformer':'log10',
+    'label_transfomer_pseudocount':0.001
     }
 genomewide_labels(regression_params)
 ```
@@ -115,6 +132,14 @@ Please make sure the following dependencies are installed on your system to use 
 * numpy
 * multiprocessing
 
+## Regression label transformations 
+
+In regression mode (   "peak_summit_in_bin_regression", "peak_percent_overlap_with_bin_regression", "all_genome_bins_regression"), the generated labels can be transformed in one of several ways. You can use the arguments `label_transformer` and `label_transformer_pseudocount` to specify the desired tranformation. Allowed values are: 
+
+* asinh --  numpy.arcsinh(values) will be computed (this is the default) 
+* None -- no label transformation will be performed 
+* log10 --  numpy.log10(values) will be computed using a pseudocount specified by `label_transformer_pseudocount` argument. If this argument is not provided,a default pseudocout of 0.001 is used. 
+* log10 -- numpy.log(values) will be computed using a pseudcount as above. 
 
 ## A note on file outputs
 
