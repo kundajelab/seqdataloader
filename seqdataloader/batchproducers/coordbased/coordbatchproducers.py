@@ -20,12 +20,12 @@ class KerasSequenceApiCoordsBatchProducer(object):
         self.seed = seed
         if (self.shuffle_before_epoch):
             self.rng = np.random.RandomState(self.seed)
-            self._shuffle_coords_list()
+            self._shuffle_coordslist()
 
     def _get_coordslist(self):
         raise NotImplementedError()
     
-    def _shuffle_coords_list(self):
+    def _shuffle_coordslist(self):
         self.rng.shuffle(self.coords_list)
   
     def __getitem__(self, index):
@@ -51,7 +51,7 @@ class KerasSequenceApiCoordsBatchProducer(object):
         Things to be executed after the epoch - like shuffling the coords
         """
         if (self.shuffle_before_epoch):
-            self._shuffle_coords_list()
+            self._shuffle_coordslist()
 
 
 class BedFileObj(object):
@@ -123,6 +123,26 @@ class DownsampleNegativesCoordsBatchProducer(
         self.last_used_offset = -1
         super(DownsampleNegativesCoordsBatchProducer, self).__init__(**kwargs)
 
+    def _shuffle_coordslist(self):
+        self.rng.shuffle(self.subsampled_neg_coords)
+        self.rng.shuffle(self.pos_coords)
+        fracpos = len(self.pos_coords)/(
+                    self.pos_coords + self.subsampled_neg_coords)
+        #interleave evenly
+        pos_included = 0
+        neg_included = 0
+        new_coordslist = []
+        for i in range(len(self.pos_coords)+len(self.subsampled_neg_coords)):
+            if (pos_included < (pos_included+neg_included)*(fracpos)):
+                new_coordslist.append(self.pos_coords[pos_included])
+                pos_included += 1
+            else:
+                new_coordslist.append(self.subsampled_neg_coords[neg_included])
+                neg_included += 1
+        assert pos_included==len(self.pos_coords)
+        assert neg_included==len(self.subsampled_neg_coords)
+        self.coords_list = new_coordslist
+
     def _get_coordslist(self):
         self.last_used_offset += 1
         self.last_used_offset = self.last_used_offset%self.subsample_factor
@@ -132,9 +152,13 @@ class DownsampleNegativesCoordsBatchProducer(
                                 offset=self.last_used_offset,
                                 stride=self.subsample_factor) 
         pos_coords = self.pos_bedfileobj.coords_list
+        self.subsampled_neg_coords = subsampled_neg_coords
+        self.pos_coords = pos_coords
         return pos_coords+subsampled_neg_coords
    
     def on_epoch_end(self):
+        if (self.shuffle_before_epoch):
+            
         #get negative set with potentially different stride
         self.coords_list = self._get_coordslist()
         #perform shuffling as needed
