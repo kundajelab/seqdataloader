@@ -157,8 +157,6 @@ class DownsampleNegativesCoordsBatchProducer(
         return pos_coords+subsampled_neg_coords
    
     def on_epoch_end(self):
-        if (self.shuffle_before_epoch):
-            
         #get negative set with potentially different stride
         self.coords_list = self._get_coordslist()
         #perform shuffling as needed
