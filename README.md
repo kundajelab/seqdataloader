@@ -139,7 +139,7 @@ In regression mode (   "peak_summit_in_bin_regression", "peak_percent_overlap_wi
 * asinh --  numpy.arcsinh(values) will be computed (this is the default) 
 * None -- no label transformation will be performed 
 * log10 --  numpy.log10(values + pseudocount) will be computed using a pseudocount specified by `label_transformer_pseudocount` argument. If this argument is not provided,a default pseudocout of 0.001 is used. 
-* log10 -- numpy.log(values + pseudocount) will be computed using a pseudcount as above. 
+* log -- numpy.log(values + pseudocount) will be computed using a pseudcount as above. 
 
 ## A note on file outputs
 
