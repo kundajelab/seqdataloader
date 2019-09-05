@@ -6,6 +6,21 @@ import numpy as np
 from pybedtools import BedTool
 import pyBigWig
 
+def transform_label_vals(labels,label_transformer,pseudocount=0.001):
+    if label_transformer is None:
+        return labels
+    elif label_transformer=="None":
+        return labels 
+    elif label_transformer == 'asinh':
+        return np.arcsinh(labels)
+    elif label_transformer == 'log10':
+        return np.log10(labels+pseudocount)
+    elif label_transformer == 'log':
+        return np.log(labels+pseudocount)
+    else:
+        raise Exception("transform_label_vals argument must be one of None, asinh, log10, log; you provided:"+str(label_transformer)) 
+
+
 def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args):
     '''
     For each peak, the summit position is determined. 
@@ -84,7 +99,8 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
                     coverage_vals[index_coverage_vals]=np.nan
                 index_coverage_vals+=1
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,np.arcsinh(coverage_vals)
+    tranformed_vals=transform_label_vals(coverage_vals,args.label_transformer,args.label_transformer_pseudocount)
+    return task_name,transformed_vals
 
 def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args):
     '''
@@ -157,7 +173,8 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
                     coverage_vals[index_coverage_vals]=np.nan
                 index_coverage_vals+=1        
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,np.arcsinh(coverage_vals)
+    transformed_vals=transform_label_vals(coverage_vals,args.label_transformer,args.label_transformer_pseudocount)
+    return task_name,transformed_vals
 
 def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args):
     '''
@@ -180,7 +197,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
 
     #compute rolling average for each bin
     bin_means=np.sum(rolling_window(strided_sums,args.bin_size//args.bin_stride),-1)/args.bin_size
-    norm_bin_means=np.arcsinh(bin_means)
+    norm_bin_means=transform_label_vals(bin_means,args.label_transformer,args.label_transformer_pseudocount)
     num_bins=norm_bin_means.shape[0]
     #add in ambiguous bins
     chrom_ambig_bed=None
