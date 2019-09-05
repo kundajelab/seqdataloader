@@ -4,6 +4,16 @@ from pyfaidx import Fasta
 from .core import AbstractSingleNdarrayCoordsToVals
 
 
+ltrdict = {
+   'a':[1,0,0,0],'c':[0,1,0,0],'g':[0,0,1,0],'t':[0,0,0,1],
+   'n':[0,0,0,0],'A':[1,0,0,0],'C':[0,1,0,0],'G':[0,0,1,0],
+   'T':[0,0,0,1],'N':[0,0,0,0]}
+
+
+def onehot_encoder(seq):
+    return np.array([ltrdict.get(x,[0,0,0,0]) for x in seq]) 
+
+
 class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
 
     def __init__(self, genome_fasta_path, center_size_to_use=None, **kwargs):
@@ -15,13 +25,6 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
         super(PyfaidxCoordsToVals, self).__init__(**kwargs)
         self.center_size_to_use = center_size_to_use
         self.genome_fasta = genome_fasta_path
-        self.ltrdict = {
-           'a':[1,0,0,0],'c':[0,1,0,0],'g':[0,0,1,0],'t':[0,0,0,1],
-           'n':[0,0,0,0],'A':[1,0,0,0],'C':[0,1,0,0],'G':[0,0,1,0],
-           'T':[0,0,0,1],'N':[0,0,0,0]}
-        #use [0,0,0,0] as default if FASTA base is not found in the dictionary
-        self.onehot_encoder = (
-            lambda seq: np.array([self.ltrdict.get(x,[0,0,0,0]) for x in seq]))
     
     def _get_ndarray(self, coors):
         """
@@ -54,7 +57,7 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
 
         onehot_seqs = []
         for seq,coor in zip(seqs, coors):
-            onehot = self.onehot_encoder(seq=seq.seq)
+            onehot = onehot_encoder(seq=seq.seq)
             if (coor.isplusstrand==False):
                 onehot = onehot[::-1, ::-1]
             onehot_seqs.append(onehot)
