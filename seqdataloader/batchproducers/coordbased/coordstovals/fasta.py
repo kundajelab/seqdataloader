@@ -50,6 +50,7 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
                 seqs.append(genome_object[coor.chrom][coor.start:coor.end])
             else:
                 print(coor.chrom+" not in "+self.genome_fasta)
+        genome_object.close()
 
         onehot_seqs = []
         for seq,coor in zip(seqs, coors):
