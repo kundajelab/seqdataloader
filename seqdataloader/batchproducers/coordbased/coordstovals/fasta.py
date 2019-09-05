@@ -38,12 +38,18 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
         for coor in coors:
           if (self.center_size_to_use is not None):
             the_center = int((coor.start + coor.end)*0.5)
-            seqs.append(genome_object[coor.chrom][
-                the_center-int(0.5*self.center_size_to_use):
-                the_center+(self.center_size_to_use
-                            -int(0.5*self.center_size_to_use))])
+            if (coor.chrom in genome_object):
+                seqs.append(genome_object[coor.chrom][
+                    the_center-int(0.5*self.center_size_to_use):
+                    the_center+(self.center_size_to_use
+                                -int(0.5*self.center_size_to_use))])
+            else:
+                print(coor.chrom+" not in "+self.genome_fasta)
           else:
-            seqs.append(genome_object[coor.chrom][coor.start:coor.end])
+            if (coor.chrom in genome_object):
+                seqs.append(genome_object[coor.chrom][coor.start:coor.end])
+            else:
+                print(coor.chrom+" not in "+self.genome_fasta)
 
         onehot_seqs = []
         for seq,coor in zip(seqs, coors):
@@ -52,6 +58,7 @@ class PyfaidxCoordsToVals(AbstractSingleNdarrayCoordsToVals):
                 onehot = onehot[::-1, ::-1]
             onehot_seqs.append(onehot)
         lengths = set([len(x) for x in onehot_seqs])
-        assert len(lengths)==1, ("All the sequences must be of the same"
-            +"lengths, but lengths are "+str(lengths))
+        if (len(lengths) > 0):
+            assert len(lengths)==1, ("All the sequences must be of the same"
+                +"lengths, but lengths are "+str(lengths))
         return np.array(onehot_seqs)
