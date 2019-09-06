@@ -71,7 +71,7 @@ class KerasBatchGenerator(keras.utils.Sequence):
                                 inputs=inputs, targets=targets)
             return (inputs, targets, sample_weights)
         else:
-            if (targets is not None):
+            if (self.targets_coordstovals is not None):
                 return (inputs, targets)
             else:
                 return inputs
