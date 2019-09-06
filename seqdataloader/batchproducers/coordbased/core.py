@@ -52,11 +52,15 @@ class KerasBatchGenerator(keras.utils.Sequence):
         if (self.coordsbatch_transformer is not None):
             coords_batch = self.coordsbatch_transformer(coords_batch)
         inputs = self.inputs_coordstovals(coords_batch)
-        targets = self.targets_coordstovals(coords_batch)
+        if (self.targets_coordstovals is not None):
+            targets = self.targets_coordstovals(coords_batch)
+        else:
+            targets=None
         if (self.qc_func is not None):
             qc_mask = self.qc_func(inputs=inputs, targets=targets)
             inputs = apply_mask(tomask=inputs, mask=qc_mask)
-            targets = apply_mask(tomask=targets, mask=qc_mask)
+            if (targets is not None):
+                targets = apply_mask(tomask=targets, mask=qc_mask)
         else:
             qc_mask = None
         if (self.sampleweights_coordstovals is not None):
@@ -67,7 +71,10 @@ class KerasBatchGenerator(keras.utils.Sequence):
                                 inputs=inputs, targets=targets)
             return (inputs, targets, sample_weights)
         else:
-            return (inputs, targets)
+            if (targets is not None):
+                return (inputs, targets)
+            else:
+                return inputs
    
     def __len__(self):
         return len(self.coordsbatch_producer)
