@@ -75,6 +75,8 @@ class CoordsToValsJoiner(CoordsToVals):
                 if (batch_to_return is None):
                     batch_to_return = []
                 batch_to_return.extend(the_batch)
+        if (batch_to_return is None):
+            batch_to_return = []
         return batch_to_return
 
 
