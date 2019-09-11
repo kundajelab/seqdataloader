@@ -8,7 +8,7 @@ import gzip
 class SimpleLookup(AbstractSingleNdarrayCoordsToVals):
 
     def __init__(self, lookup_file,
-                       transformation=lambda x: x,
+                       transformation=None,
                        default_returnval=0.0, **kwargs):
         super(SimpleLookup, self).__init__(**kwargs)
         self.lookup_file = lookup_file
@@ -23,7 +23,9 @@ class SimpleLookup(AbstractSingleNdarrayCoordsToVals):
             coord = Coordinates(chrom=chrom,
                                 start=int(start_str),
                                 end=int(end_str))
-            labels = [self.transformation(float(x)) for x in labels] 
+            labels = [(self.transformation(float(x))
+                       if self.transformation is not None else float(x))
+                      for x in labels] 
             self.lookup[(coord.chrom, coord.start, coord.end)] = labels
             if (self.num_labels is None):
                 self.num_labels = len(labels)
