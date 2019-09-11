@@ -1,5 +1,6 @@
 recursive-include . *.md
 recursive-include docs *
+recursive-include seqdataloader/ *
 include examples/tasks.tsv
 include examples/genomewide_labels_examples.py
 include examples/genomewide_labels_examples.sh

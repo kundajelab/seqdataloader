@@ -13,3 +13,5 @@ v0.122,02/28/2019 -- write each chromosome to output file individually to reduce
 v0.123,03/02/2019 -- ambig_bed default
 [missing documentation]
 v0.127,09/05/2019 -- (Av Shrikumar) added functionality to be able to load batches from a downsampled negative set, retrieve labels via a lookup table, Coordinate object is now a namedtuple rather than a full object.
+v0.128,09/10/2019 -- (Anna Shcherbina) fixing issue with wheel structure in pypi release
+
