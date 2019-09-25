@@ -22,18 +22,20 @@ def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_in
     nitems_in_row=chrom_subset_df.shape[1]
     if (store_summits==True) and (chrom_subset_df.shape[1]<10):
         print("warning! dataset does not have 10 columns of the standard narrowPeak format, falling back to peak centers")
+    summits=[]
     for index,row in chrom_subset_df.iterrows():
         signal_data[row[1]:row[2]]=1
+        #add in summits in a separate step to avoid overwriting them with "1's" for overlaping peak coordinates;
+        #The overwriting issue is particularly relevant for pseudobulk data. 
         if store_summits is True:
             if len(row)<10:
                 summit_pos=int(round(row[1]+0.5*(row[2]-row[1])))
             else: 
                 summit_pos=row[1]+row[nitems_in_row-1]
-            try:
-                signal_data[summit_pos]=summit_indicator
-            except Exception as e:
-                print(e)
-                raise Exception() 
+            summits.append(summit_pos)
+    if store_summits is True:
+        signal_data[summits]=summit_indicator
+    assert min(signal_data)==0 #sanity check 
     return signal_data 
 
     

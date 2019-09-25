@@ -1,5 +1,9 @@
 ## helper functions to ingest bigwig and narrowPeak data files into a tileDB instance.
 ## tileDB instances are indexed by coordinate
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import tiledb
 import argparse
 import pandas as pd
@@ -7,7 +11,26 @@ import numpy as np
 from .attrib_config import *
 from .utils import *
 from concurrent.futures import ProcessPoolExecutor
+#from multiprocessing import Pool 
 import pdb
+
+#graceful shutdown
+import psutil
+import signal 
+import os
+
+def init_worker():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+def kill_child_processes(parent_pid, sig=signal.SIGTERM):
+    try:
+        parent = psutil.Process(parent_pid)
+    except psutil.NoSuchProcess:
+        return
+    children = parent.children(recursive=True)
+    for process in children:
+        process.send_signal(sig)
+
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
@@ -30,6 +53,7 @@ def create_new_array(size,
     '''
     Creates an empty tileDB array
     '''
+    
     tile_size=min(size,tile_size)    
     tiledb_dim = tiledb.Dim(
         name='genome_coordinate',
@@ -44,7 +68,7 @@ def create_new_array(size,
                               "sm.num_reader_threads":50})
     tdb_Context=tiledb.Ctx(config=tdb_Config)
     tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context)
-    
+
     #generate the attribute information
     attribute_info=get_attribute_info()
     attribs=[]
@@ -58,7 +82,7 @@ def create_new_array(size,
         attrs=tuple(attribs),
         cell_order='row-major',
         tile_order='row-major')
-
+    
     tiledb.DenseArray.create(array_out_name, tiledb_schema)
     print("created empty array on disk") 
     return
@@ -71,9 +95,7 @@ def write_chunk(inputs):
     batch_size=inputs[4]
     print("start:"+str(start)+", end:"+str(end))
     ctx = tiledb.Ctx()
-    with tiledb.DenseArray(array_out_name,ctx=ctx,mode='w') as out_array: 
-        #sub_df=df.iloc[start:end]
-        #sub_dict=sub_df.to_dict(orient='list')
+    with tiledb.DenseArray(array_out_name,ctx=ctx,mode='w') as out_array:
         out_array[start:end]=sub_dict
         print("done with chunk start:"+str(start)+", end:"+str(end)) 
     return "done"
@@ -89,12 +111,13 @@ def write_array_to_tiledb(size,
     print("starting to write output") 
     if updating is True:
         #we are only updating some attributes in the array
-        with tiledb.DenseArray(array_out_name,mode='r') as cur_array:
+        with tiledb.DenseArray(array_out_name,mode='r',ctx=tiledb.Ctx()) as cur_array:
             cur_vals=cur_array[:]
         print('got cur vals') 
         for key in dict_to_write:
-            print(key) 
+            print(key)
             cur_vals[key]=dict_to_write[key]
+            print("dict_to_write[key].shape:"+str(dict_to_write[key].shape))
         dict_to_write=cur_vals
         print("updated data dict for writing") 
     else:
@@ -108,13 +131,31 @@ def write_array_to_tiledb(size,
     num_entries=df.shape[0]
     pool_inputs=[]
     for i in range(0,num_entries,batch_size):
+        print(i)
         pool_inputs.append((array_out_name,i,i+batch_size,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
     pool_inputs.append((array_out_name,i+batch_size,num_entries,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
-    
-    with ProcessPoolExecutor(max_workers=write_threads) as pool:
-        print("made pool")
-        futures=pool.map(write_chunk,pool_inputs)
-    print("done writing")
+    print("length of pool inputs:"+str(len(pool_inputs)))
+    try:
+        with ProcessPoolExecutor(max_workers=write_threads,initializer=init_worker) as pool:
+            print("made pool")
+            futures=pool.map(write_chunk,pool_inputs)
+        print("done writing")
+    except KeyboardInterrupt:
+        print('detected keyboard interrupt')
+        #shutdown the pool
+        pool.terminate()
+        pool.join() 
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise 
+    except Exception as e:
+        print(e)
+        #shutdown the pool
+        pool.terminate()
+        pool.join()
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise e
 
 def extract_metadata_field(row,field):
     dataset=row['dataset'] 
@@ -203,12 +244,26 @@ def create_tiledb_array(inputs):
         array_out_name='.'.join([array_outf_prefix,chrom])
         pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args))
     try:
-        with ProcessPoolExecutor(max_workers=args.chrom_threads) as pool:
+        with ProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
             cur_futures=pool.map(process_chrom,pool_inputs)
-        for entry in pool_inputs:
-            result=process_chrom(entry)
+        #for entry in pool_inputs:
+        #    result=process_chrom(entry)
+    except KeyboardInterrupt:
+        print('detected keyboard interrupt')
+        #shutdown the pool
+        pool.terminate()
+        pool.join() 
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise 
     except Exception as e:
-        raise e 
+        print(e)
+        #shutdown the pool
+        pool.terminate()
+        pool.join()
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise e
     return "done"
 
 def args_object_from_args_dict(args_dict):
@@ -244,13 +299,27 @@ def ingest(args):
     for index,row in tiledb_metadata.iterrows():
         pool_inputs.append([row,args,chrom_sizes,attribute_info])
     try:
-        with ProcessPoolExecutor(max_workers=args.task_threads) as pool:
+        with ProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool:
             results=pool.map(create_tiledb_array,pool_inputs)
         #the lines below are kept in case we need to get rid of the pooled multiprocessing
         # at any point 
         #for entry in pool_inputs:
         #    result=create_tiledb_array(entry)
+    except KeyboardInterrupt:
+        print("keyboard interrupt detected")
+        #shutdown the pool
+        pool.terminate()
+        pool.join() 
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise 
     except Exception as e:
+        print(e)
+        #shutdown the pool
+        pool.terminate()
+        pool.join()
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
         raise e
     return "done"
 
