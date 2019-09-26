@@ -30,6 +30,21 @@ def kill_child_processes(parent_pid, sig=signal.SIGTERM):
     children = parent.children(recursive=True)
     for process in children:
         process.send_signal(sig)
+def args_object_from_args_dict(args_dict):
+    #create an argparse.Namespace from the dictionary of inputs
+    args_object=argparse.Namespace()
+    #set the defaults
+    vars(args_object)['chrom_threads']=1
+    vars(args_object)['task_threads']=1
+    vars(args_object)['write_threads']=1
+    vars(args_object)['overwrite']=False
+    vars(args_object)['batch_size']=1000000
+    vars(args_object)['tile_size']=10000
+    for key in args_dict:
+        vars(args_object)[key]=args_dict[key]
+    #set any defaults that are unset 
+    args=args_object    
+    return args 
 
 
 def parse_args():
@@ -173,7 +188,11 @@ def open_data_for_parsing(row,attribute_info):
     for col in cols:
         cur_fname=extract_metadata_field(row,col)
         if cur_fname is not None:
-            data_dict[col]=attribute_info[col]['opener'](cur_fname)            
+            try:
+                data_dict[col]=attribute_info[col]['opener'](cur_fname)
+            except Exception as e:
+                print(e)
+                raise e
     return data_dict
 
 def process_chrom(inputs):
@@ -200,7 +219,7 @@ def process_chrom(inputs):
                          array_out_name=array_out_name,
                          tile_size=tile_size)
         print("created new array:"+str(array_out_name))
-
+    print("here")
     dict_to_write=dict()
     for attribute in data_dict:
         store_summits=False
@@ -231,10 +250,11 @@ def create_tiledb_array(inputs):
     args=inputs[1]
     chrom_sizes=inputs[2]
     attribute_info=inputs[3] 
-    #get the current dataset 
+    #get the current dataset
     dataset=row['dataset']    
     #read in filenames for bigwigs
     data_dict=open_data_for_parsing(row,attribute_info)
+    print("got data dict") 
     pool_inputs=[] 
     array_outf_prefix="/".join([args.tiledb_group,dataset])
     print("parsed pool inputs") 
@@ -245,6 +265,7 @@ def create_tiledb_array(inputs):
         pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args))
     try:
         with ProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
+            print("made pool!")
             cur_futures=pool.map(process_chrom,pool_inputs)
         #for entry in pool_inputs:
         #    result=process_chrom(entry)
@@ -266,18 +287,6 @@ def create_tiledb_array(inputs):
         raise e
     return "done"
 
-def args_object_from_args_dict(args_dict):
-    #create an argparse.Namespace from the dictionary of inputs
-    args_object=argparse.Namespace()
-    #set the defaults
-    vars(args_object)['chrom_threahds']=1
-    vars(args_object)['task_threads']=1
-    vars(args_object)['overwrite']=False
-    for key in args_dict:
-        vars(args_object)[key]=args_dict[key]
-    #set any defaults that are unset 
-    args=args_object    
-    return args 
     
 def ingest(args):
     if type(args)==type({}):
@@ -301,10 +310,6 @@ def ingest(args):
     try:
         with ProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool:
             results=pool.map(create_tiledb_array,pool_inputs)
-        #the lines below are kept in case we need to get rid of the pooled multiprocessing
-        # at any point 
-        #for entry in pool_inputs:
-        #    result=create_tiledb_array(entry)
     except KeyboardInterrupt:
         print("keyboard interrupt detected")
         #shutdown the pool
