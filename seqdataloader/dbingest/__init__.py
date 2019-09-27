@@ -40,6 +40,7 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['overwrite']=False
     vars(args_object)['batch_size']=1000000
     vars(args_object)['tile_size']=10000
+    vars(args_object)['attribute_config']='encode_pipeline' 
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
@@ -57,12 +58,14 @@ def parse_args():
     parser.add_argument("--task_threads",type=int,default=1,help="outer thread pool,launched by main thread")
     parser.add_argument("--write_threads",type=int,default=1)
     parser.add_argument("--batch_size",type=int,default=1000000,help="num entries to write at once")
-    parser.add_argument("--tile_size",type=int,default=10000,help="tile size") 
+    parser.add_argument("--tile_size",type=int,default=10000,help="tile size")
+    parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig") 
     return parser.parse_args()
 
 def create_new_array(size,
                      array_out_name,
                      tile_size,
+                     attribute_config,
                      compressor='gzip',
                      compression_level=-1):
     '''
@@ -85,7 +88,7 @@ def create_new_array(size,
     tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context)
 
     #generate the attribute information
-    attribute_info=get_attribute_info()
+    attribute_info=get_attribute_info(attribute_config)
     attribs=[]
     for key in attribute_info:
         attribs.append(tiledb.Attr(
@@ -116,6 +119,7 @@ def write_chunk(inputs):
     return "done"
     
 def write_array_to_tiledb(size,
+                          attribute_config,
                           dict_to_write,
                           array_out_name,
                           batch_size=10000,
@@ -137,7 +141,7 @@ def write_array_to_tiledb(size,
         print("updated data dict for writing") 
     else:
         #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
-        required_attrib=list(get_attribute_info().keys())
+        required_attrib=list(get_attribute_info(attribute_config).keys())
         for attrib in required_attrib:
             if attrib not in dict_to_write:
                 dict_to_write[attrib]=np.full(size,np.nan)
@@ -181,19 +185,19 @@ def extract_metadata_field(row,field):
         return None
 
 def open_data_for_parsing(row,attribute_info):
-    data_dict={}
-    cols=list(row.index)
-    if 'dataset' in cols:
-        cols.remove('dataset')
-    for col in cols:
-        cur_fname=extract_metadata_field(row,col)
-        if cur_fname is not None:
-            try:
+    try:
+        data_dict={}
+        cols=list(row.index)
+        if 'dataset' in cols:
+            cols.remove('dataset')
+        for col in cols:
+            cur_fname=extract_metadata_field(row,col)
+            if cur_fname is not None:
                 data_dict[col]=attribute_info[col]['opener'](cur_fname)
-            except Exception as e:
-                print(e)
-                raise e
-    return data_dict
+        return data_dict
+    except Exception as e:
+        print(e)
+        raise e
 
 def process_chrom(inputs):
     chrom=inputs[0]
@@ -205,7 +209,8 @@ def process_chrom(inputs):
     overwrite=args.overwrite
     write_threads=args.write_threads
     batch_size=args.batch_size
-    tile_size=args.tile_size 
+    tile_size=args.tile_size
+    attribute_config=args.attribute_config
     updating=False
     if tiledb.object_type(array_out_name) == "array":
         if overwrite==False:
@@ -216,10 +221,10 @@ def process_chrom(inputs):
     else:
         #create the array:
         create_new_array(size=size,
+                         attribute_config=attribute_config,
                          array_out_name=array_out_name,
                          tile_size=tile_size)
         print("created new array:"+str(array_out_name))
-    print("here")
     dict_to_write=dict()
     for attribute in data_dict:
         store_summits=False
@@ -234,6 +239,7 @@ def process_chrom(inputs):
         print("got:"+str(attribute)+" for chrom:"+str(chrom))
     
     write_array_to_tiledb(size=size,
+                          attribute_config=attribute_config,
                           dict_to_write=dict_to_write,
                           array_out_name=array_out_name,
                           updating=updating,
@@ -254,7 +260,6 @@ def create_tiledb_array(inputs):
     dataset=row['dataset']    
     #read in filenames for bigwigs
     data_dict=open_data_for_parsing(row,attribute_info)
-    print("got data dict") 
     pool_inputs=[] 
     array_outf_prefix="/".join([args.tiledb_group,dataset])
     print("parsed pool inputs") 
@@ -292,7 +297,7 @@ def ingest(args):
     if type(args)==type({}):
         args=args_object_from_args_dict(args)
         
-    attribute_info=get_attribute_info() 
+    attribute_info=get_attribute_info(args.attribute_config) 
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
