@@ -134,7 +134,6 @@ def write_array_to_tiledb(size,
             cur_vals=cur_array[:]
         print('got cur vals') 
         for key in dict_to_write:
-            print(key)
             cur_vals[key]=dict_to_write[key]
             print("dict_to_write[key].shape:"+str(dict_to_write[key].shape))
         dict_to_write=cur_vals
@@ -150,7 +149,6 @@ def write_array_to_tiledb(size,
     num_entries=df.shape[0]
     pool_inputs=[]
     for i in range(0,num_entries,batch_size):
-        print(i)
         pool_inputs.append((array_out_name,i,i+batch_size,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
     pool_inputs.append((array_out_name,i+batch_size,num_entries,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
     print("length of pool inputs:"+str(len(pool_inputs)))
@@ -168,7 +166,7 @@ def write_array_to_tiledb(size,
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
-        print(e)
+        print(repr(e))
         #shutdown the pool
         pool.terminate()
         pool.join()
@@ -196,7 +194,7 @@ def open_data_for_parsing(row,attribute_info):
                 data_dict[col]=attribute_info[col]['opener'](cur_fname)
         return data_dict
     except Exception as e:
-        print(e)
+        print(repr(e))
         raise e
 
 def process_chrom(inputs):
@@ -252,28 +250,28 @@ def create_tiledb_array(inputs):
     '''
     create new tileDB array for a single dataset, overwrite if array exists and user sets --overwrite flag
     '''
-    row=inputs[0]
-    args=inputs[1]
-    chrom_sizes=inputs[2]
-    attribute_info=inputs[3] 
-    #get the current dataset
-    dataset=row['dataset']    
-    #read in filenames for bigwigs
-    data_dict=open_data_for_parsing(row,attribute_info)
-    pool_inputs=[] 
-    array_outf_prefix="/".join([args.tiledb_group,dataset])
-    print("parsed pool inputs") 
-    for index, row in chrom_sizes.iterrows():
-        chrom=row[0]
-        size=row[1]
-        array_out_name='.'.join([array_outf_prefix,chrom])
-        pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args))
     try:
+        row=inputs[0]
+        args=inputs[1]
+        chrom_sizes=inputs[2]
+        attribute_info=inputs[3] 
+        #get the current dataset
+        dataset=row['dataset']    
+        #read in filenames for bigwigs
+        data_dict=open_data_for_parsing(row,attribute_info)
+        pool_inputs=[] 
+        array_outf_prefix="/".join([args.tiledb_group,dataset])
+        print("parsed pool inputs") 
+        for index, row in chrom_sizes.iterrows():
+            chrom=row[0]
+            size=row[1]
+            array_out_name='.'.join([array_outf_prefix,chrom])
+            pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args))
         with ProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
             print("made pool!")
             cur_futures=pool.map(process_chrom,pool_inputs)
-        #for entry in pool_inputs:
-        #    result=process_chrom(entry)
+            #for entry in pool_inputs:
+            #    result=process_chrom(entry)
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
@@ -283,7 +281,7 @@ def create_tiledb_array(inputs):
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
-        print(e)
+        print(repr(e))
         #shutdown the pool
         pool.terminate()
         pool.join()
@@ -324,7 +322,7 @@ def ingest(args):
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
-        print(e)
+        print(repr(e))
         #shutdown the pool
         pool.terminate()
         pool.join()

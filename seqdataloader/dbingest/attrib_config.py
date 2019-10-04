@@ -31,7 +31,7 @@ def get_encode_config():
                                          'parser':parse_bigwig_chrom_vals,
                                          'store_summits':False}
     
-    attrib_info['count_bigwig_minux_5p']={'dtype':'float32',
+    attrib_info['count_bigwig_minus_5p']={'dtype':'float32',
                                           'opener':open_bigwig_for_parsing,
                                           'parser':parse_bigwig_chrom_vals,
                                           'store_summits':False}    
