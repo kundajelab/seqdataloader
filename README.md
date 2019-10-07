@@ -7,6 +7,8 @@ Sequence data label generation and ingestion into deep learning models
 If you plan to modify the code, you can install it in development mode: 
 `pip install -e seqdataloader` 
 
+Please note: to use the "dbingest" functionality in seqdataloader, python>=3.7 is needed. 
+
 ## Quick Start
 
 tasks.tsv is a 4 column tab-delimited file
