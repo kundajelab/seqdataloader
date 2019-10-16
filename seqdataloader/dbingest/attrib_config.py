@@ -12,7 +12,7 @@ def get_generic_bigwig_config():
     return attrib_info 
 
 def get_encode_config():
-    required_attribs=['fc_bigwig','pval_bigwig','count_bigwig','idr_peak','overlap_peak','ambig_peak']
+    required_attribs=['fc_bigwig','pval_bigwig','count_bigwig_plus_5p','count_bigwig_minus_5p','idr_peak','overlap_peak','ambig_peak']
 
     attrib_info=dict()
 

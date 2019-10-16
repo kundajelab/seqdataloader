@@ -10,7 +10,7 @@
 ## user 21m49.384s
 ## sys 6m21.000s
 
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
 #		  --output_type gzip \
 #		  --chrom_sizes hg38.chrom.sizes \
@@ -18,13 +18,13 @@
 #		  --left_flank 400 \
 #		  --right_flank 400 \
 #		  --bin_size 200 \
-#		  --threads 10 \
-#		  --subthreads 4 \
+#		  --chrom_threads 10 \
+#		  --task_threads 4 \
 #		  --allow_ambiguous \
 #		  --labeling_approach peak_summit_in_bin_classification
 
 #Example of restricting analysis to a single chromosome with --chroms_to_keep flag 
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
 #		  --output_type gzip \
 #		  --chrom_sizes hg38.chrom.sizes \
@@ -33,14 +33,14 @@
 #		  --left_flank 400 \
 #		  --right_flank 400 \
 #		  --bin_size 200 \
-#		  --threads 10 \
-#		  --subthreads 4 \
+#		  --chrom_threads 10 \
+#		  --task_threads 4 \
 #		  --allow_ambiguous \
 #		  --labeling_approach peak_summit_in_bin_classification
 
 
 #Example with only positives stored
-genomewide_labels --task_list tasks.tsv \
+genomewide_labels --task_list tasks.labelgen.tsv \
 		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
 		  --output_type gzip \
 		  --chrom_sizes hg38.chrom.sizes \
@@ -49,8 +49,8 @@ genomewide_labels --task_list tasks.tsv \
 		  --left_flank 400 \
 		  --right_flank 400 \
 		  --bin_size 200 \
-		  --threads 10 \
-		  --subthreads 4 \
+		  --chrom_threads 10 \
+		  --task_threads 4 \
 		  --allow_ambiguous \
 		  --store_positives_only \
 		  --labeling_approach peak_summit_in_bin_classification
@@ -63,15 +63,15 @@ genomewide_labels --task_list tasks.tsv \
 ## user25m23.004s
 ## sys7m58.104s
 
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #       --outf classificationlabels.50PercentOverlap.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \
 #       --bin_stride 50 \
 #       --left_flank 400 \
 #       --right_flank 400 \
-#       --threads 10 \
-#       --subthreads 4 \
+#       --chrom_threads 10 \
+#       --task_threads 4 \
 #       --allow_ambiguous \
 #       --overlap_thresh 0.5 \
 #       --labeling_approach peak_percent_overlap_with_bin_classification
@@ -82,7 +82,7 @@ genomewide_labels --task_list tasks.tsv \
 ## user 24m25.028s
 ## sys 7m58.244s
 
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #       --outf regressionlabels.SummitWithin200bpCenter.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \
@@ -90,8 +90,8 @@ genomewide_labels --task_list tasks.tsv \
 #       --left_flank 400 \
 #       --right_flank 400 \
 #       --bin_size 200 \
-#       --threads 10 \
-#       --subthreads 4 \
+#       --chrom_threads 10 \
+#       --task_threads 4 \
 #       --allow_ambiguous \
 #       --labeling_approach peak_summit_in_bin_regression
 #
@@ -101,15 +101,15 @@ genomewide_labels --task_list tasks.tsv \
 ## user25m23.004s
 ## sys7m58.104s
 
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #       --outf regressionlabels.50PercentOverlap.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \
 #       --bin_stride 50 \
 #       --left_flank 400 \
 #       --right_flank 400 \
-#       --threads 10 \
-#       --subthreads 4 \
+#       --chrom_threads 10 \
+#       --task_threads 4 \
 #       --allow_ambiguous \
 #       --overlap_thresh 0.5 \
 #       --labeling_approach peak_percent_overlap_with_bin_regression
@@ -121,30 +121,30 @@ genomewide_labels --task_list tasks.tsv \
 ## real 8m51.275s
 ## user 17m38.576s
 ## sys 6m14.768s
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #       --outf regressionlabels.allbins.hg38.hdf5 \
 #       --output_type hdf5 \
 #       --chrom_sizes hg38.chrom.sizes \
 #       --bin_stride 50 \
 #       --left_flank 400 \
 #       --right_flank 400 \
-#       --threads 24 \
-#       --subthreads 2 \
+#       --chrom_threads 24 \
+#       --task_threads 2 \
 #       --labeling_approach all_genome_bins_regression
 
 ## Timing (pkl) 
 ## real    23m10.448s
 ## user    31m55.056s
 ## sys     5m39.880s
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #       --outf regressionlabels.allbins.hg38.pkl \
 #       --output_type pkl \
 #       --chrom_sizes hg38.chrom.sizes \
 #       --bin_stride 50 \
 #       --left_flank 400 \
 #       --right_flank 400 \
-#       --threads 24 \
-#       --subthreads 2 \
+#       --chrom_threads 24 \
+#       --task_threads 2 \
 #       --labeling_approach all_genome_bins_regression
 
 
@@ -157,14 +157,14 @@ genomewide_labels --task_list tasks.tsv \
 ## real 21m35.525s
 ## user 51m55.496s
 ## sys 7m49.140s
-#genomewide_labels --task_list tasks.tsv \
+#genomewide_labels --task_list tasks.labelgen.tsv \
 #       --outf regressionlabels.allbins.hg38.tsv.gz \
 #       --output_type gzip \
 #       --chrom_sizes hg38.chrom.sizes \
 #       --bin_stride 50 \
 #       --left_flank 400 \
 #       --right_flank 400 \
-#       --threads 24 \
-#       --subthreads 2 \
+#       --chrom_threads 24 \
+#       --task_threads 2 \
 #       --split_output_by_chrom \
 #       --labeling_approach all_genome_bins_regression

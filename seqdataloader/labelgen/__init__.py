@@ -87,7 +87,7 @@ def get_chrom_labels(inputs):
         chroms,all_start_pos,all_end_pos,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args)
     except:
         return (chrom,None)
-    columns=['CHR','START','END']+list(tasks[0])
+    columns=['CHR','START','END']+list(tasks['task'])
     num_entries=len(chroms.values)
     chrom_df = pd.DataFrame(0,index=np.arange(num_entries),columns=columns)
     chrom_df['CHR']=chroms.values
@@ -121,41 +121,41 @@ def get_bed_and_bigwig_dict(tasks):
     print("creating dictionary of bed files and bigwig files for each task:")
     bed_and_bigwig_dict=dict()
     for index,row in tasks.iterrows():
-        task_name=row[0]
+        task_name=row['task']
         print(task_name) 
         bed_and_bigwig_dict[task_name]=dict()
         
         #get the peak file associated with the task (if provided)
-        if pd.isna(row[1]):
+        if "narrowPeak" not in row: 
             task_bed=None
         else:
-            assert os.path.exists(row[1])
+            assert os.path.exists(row["narrowPeak"])
             try:
-                task_bed=BedTool(row[1])
+                task_bed=BedTool(row["narrowPeak"])
             except:
-                raise Exception("Could not parse:"+str(row[1]))
+                raise Exception("Could not parse:"+str(row["narrowPeak"]))
         bed_and_bigwig_dict[task_name]['bed']=task_bed
         
         #get the BigWig file associated with the task (if provided)
-        if pd.isna(row[2]):
+        if "bigwig"  not in row: 
             task_bigwig=None
         else:
-            assert os.path.exists(row[2])
+            assert os.path.exists(row["bigwig"])
             try:
-                task_bigwig=pyBigWig.open(row[2])
+                task_bigwig=pyBigWig.open(row["bigwig"])
             except:
-                raise Exception("Could not parse:"+str(row[2]))
+                raise Exception("Could not parse:"+str(row["bigwig"]))
         bed_and_bigwig_dict[task_name]['bigwig']=row[2] #need to parse the pyBigWig inside Pool
         
         #get the ambiguous peaks
-        if pd.isna(row[3]):
+        if "ambig"  not in row: 
             ambig_bed=None
         else: 
-            assert os.path.exists(row[3])
+            assert os.path.exists(row["ambig"])
             try:
-                ambig_bed=BedTool(row[3])
+                ambig_bed=BedTool(row["ambig"])
             except:
-                raise Exception("Could not parse:"+str(row[3]))
+                raise Exception("Could not parse:"+str(row["ambig"]))
         bed_and_bigwig_dict[task_name]['ambig']=ambig_bed
         
     return bed_and_bigwig_dict
@@ -265,7 +265,7 @@ def genomewide_labels(args):
     #path to peak file in column 2,
     #path to bigWig file in column 3
     #path to ambiguous peaks in column 4 (bed) 
-    tasks=pd.read_csv(args.task_list,sep=args.task_list_sep,header=None)
+    tasks=pd.read_csv(args.task_list,sep=args.task_list_sep,header=0)
     bed_and_bigwig_dict=get_bed_and_bigwig_dict(tasks) 
 
     #col1: chrom name
@@ -303,7 +303,7 @@ def genomewide_labels(args):
         if chrom_df is None:
             continue 
         print("writing output chromosomes:"+str(chrom))
-        write_output(tasks[0],chrom_df,first_chrom,args,mode=mode)
+        write_output(tasks['task'],chrom_df,first_chrom,args,mode=mode)
         first_chrom=False
         mode='a'
     print("done!")
