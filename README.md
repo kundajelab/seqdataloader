@@ -9,9 +9,10 @@ If you plan to modify the code, you can install it in development mode:
 
 Please note: to use the "dbingest" functionality in seqdataloader, python>=3.7 is needed. 
 
-## Quick Start
+# Quick Start
 
-tasks.tsv is a 4 column tab-delimited file
+## labelgen 
+The input for the labelgen submodule is a 4 column tab-delimited file ("tasks.tsv")
 
 Column 1 -- User-specified task name
 
@@ -63,7 +64,7 @@ labeling_approach can be one of:
     "all_genome_bins_regression"
     
 
-## How to run 
+### How to run 
 Sample datasets are included in the folder `examples/peak_files_from_encode_for_label_comparison` and `examples/bigwig_files_from_encode_for_label_comparison`
 
 ### Executing seqdataloader as a script: 
@@ -123,18 +124,7 @@ regression_params={
     }
 genomewide_labels(regression_params)
 ```
-
-
-## Dependencies
-
-Please make sure the following dependencies are installed on your system to use SeqDataLoader:
-* pybedtools
-* pyBigWig 
-* pandas
-* numpy
-* multiprocessing
-
-## Regression label transformations 
+### Regression label transformations 
 
 In regression mode (   "peak_summit_in_bin_regression", "peak_percent_overlap_with_bin_regression", "all_genome_bins_regression"), the generated labels can be transformed in one of several ways. You can use the arguments `label_transformer` and `label_transformer_pseudocount` to specify the desired tranformation. Allowed values are: 
 
@@ -143,13 +133,27 @@ In regression mode (   "peak_summit_in_bin_regression", "peak_percent_overlap_wi
 * log10 --  numpy.log10(values + pseudocount) will be computed using a pseudocount specified by `label_transformer_pseudocount` argument. If this argument is not provided,a default pseudocout of 0.001 is used. 
 * log -- numpy.log(values + pseudocount) will be computed using a pseudcount as above. 
 
-## A note on file outputs
+### A note on file outputs
 
 The code supports several output types: `hdf5`, `gzip`, `pkl`, `bz2`.
 Specify your desired output type with the flag `--output_type`. The default setting for this flag is `gzip`
 Please note that the large bottleneck in the code is writing the files to disk. `hdf5` has negligible overhead, but using `gzip` or `bz2` may increase runtime. Timining benchmarks are provided in `examples/genomewide_labels.sh`
 
 You may speed up i/o by writing chromosome outputs to separate files in parallel. This is currently only supported for the `gzip` and `bz2` output types, as i/o is less of a bottleneck for `hdf5` and `pkl` output formats. Use the flag `--split_output_by_chrom` to invoke this parallelized saving of chromosomes.
+
+## dbingest 
+
+
+
+# Dependencies
+
+Please make sure the following dependencies are installed on your system to use SeqDataLoader:
+* pybedtools
+* pyBigWig 
+* pandas
+* numpy
+* multiprocessing
+
 
 ## Documentation and benchmarks
 
