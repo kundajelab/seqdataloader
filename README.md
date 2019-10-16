@@ -141,6 +141,7 @@ You may speed up i/o by writing chromosome outputs to separate files in parallel
 ## dbingest 
 
 The input tsv file must have a subset of the columns corresponding to the supported configurations: 
+```
  * encode_config 
 	** fc_bigwig 
 	** pval_bigwig
@@ -153,7 +154,7 @@ The input tsv file must have a subset of the columns corresponding to the suppor
 * generic_bigwig 
 	** bigwig_track 
 	
-
+```
 # Dependencies
 
 Please make sure the following dependencies are installed on your system to use SeqDataLoader:
