@@ -12,8 +12,8 @@ def open_csv_for_parsing(fname):
 
 def parse_bigwig_chrom_vals(bigwig_name,chrom,size,store_summits,summit_indicator):
     bigwig_object=pyBigWig.open(bigwig_name)
-    signal_data = np.zeros(size, dtype=np.float32)
-    signal_data[:]=bigwig_object.values(chrom,0,size) 
+    #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0. 
+    signal_data[:]=np.fillna(bigwig_object.values(chrom,0,size),0)
     return signal_data
 
 def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_indicator):
