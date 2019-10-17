@@ -12,15 +12,12 @@ Please note: to use the "dbingest" functionality in seqdataloader, python>=3.7 i
 # Quick Start
 
 ## labelgen 
-The input for the labelgen submodule is a 4 column tab-delimited file ("tasks.tsv")
+The input for the labelgen submodule is a 4 column tab-delimited file with the following fields: 
 
-Column 1 -- User-specified task name
-
-Column 2 -- path to narrowPeak file (optional if Column 3 is specified)
-
-Column 3 -- path to bigwig file (optional if Column 2 is specified)
-
-Column 4 -- bed file containing user-specified regions to label as ambiguous (i.e. "blacklist")
+* "task" -- required. User-specified task name 
+* "narrowPeak" -- Path to narrowPeak file. (Optional if "bigwig" is specified.) 
+* "bigwig" -- Path to bigwig file (optional if "narrowPeak" is specified.)
+* "ambig" -- bed file containing user-specified regions to label as ambiguous (optional) 
 
 ```
 genomewide_labels --task_list tasks.tsv \
@@ -143,8 +140,21 @@ You may speed up i/o by writing chromosome outputs to separate files in parallel
 
 ## dbingest 
 
-
-
+The input tsv file must have a subset of the columns corresponding to the supported configurations: 
+```
+ * encode_config 
+	** fc_bigwig 
+	** pval_bigwig
+	** count_bigwig_plus_5p
+	** count_bigwig_minus_5p
+	** idr_peak
+	** overlap_peak 
+	** ambig_peak 
+	
+* generic_bigwig 
+	** bigwig_track 
+	
+```
 # Dependencies
 
 Please make sure the following dependencies are installed on your system to use SeqDataLoader:
