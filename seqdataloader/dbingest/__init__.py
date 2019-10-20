@@ -50,7 +50,7 @@ def args_object_from_args_dict(args_dict):
 
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
-    parser.add_argument("--tiledb_metadata",help="fileds are: Dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, idr_peaks, overlap_peaks, ambig_peaks")
+    parser.add_argument("--tiledb_metadata",help="fields are: dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, idr_peak, overlap_peak, ambig_peak")
     parser.add_argument("--tiledb_group")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")

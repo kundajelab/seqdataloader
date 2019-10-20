@@ -11,7 +11,7 @@ from .classification_label_protocols import *
 from .regression_label_protocols import * 
 import gzip 
 import os
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
 labeling_approaches={
@@ -202,14 +202,23 @@ def write_output(task_names,full_df,first_chrom,args,mode='w',task_split_engaged
         header=True
     else:
         header=False
+
+    #get the universal negatives file name
+    if all_negative_df is not None:
+        if outf.startswith('/'):
+            basename_outf=outf.split('/')[-1]
+            prefix_outf='/'.join(outf.split('/')[0:-1])
+            universal_negatives_outf='.'.join(['/'.join([prefix_outf,"universal_negatives"]),basename_outf])
+        else:
+            universal_negatives_outf='.'.join([outf,"universal_negatives"])        
     if args.output_type=="gzip":
         full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
         if all_negative_df is not None:
-            all_negative_df.to_csv("universal_negatives."+outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
+            all_negative_df.to_csv(universal_negatives_outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
     elif args.output_type=="bz2":
         full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
         if all_negative_df is not None:
-            all_negative_df.to_csv("universal_negatives."+outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
+            all_negative_df.to_csv(universal_negatives_outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
     elif args.output_type=="hdf5":
         full_df=full_df.set_index(['CHR','START','END'])
         if mode=='w':
@@ -219,13 +228,13 @@ def write_output(task_names,full_df,first_chrom,args,mode='w',task_split_engaged
         full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
         if all_negative_df is not None:
             all_negative_df.set_index(['CHR','START','END'])
-            all_negative_df.to_hdf("universal_negatives."+outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
+            all_negative_df.to_hdf(universal_negatives_outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
     elif args.output_type=="pkl":
         full_df=full_df.set_index(['CHR','START','END'])        
         full_df.to_pickle(outf,compression="gzip")
         if all_negative_df is not None:
             all_negative_df.set_index(['CHR','START','END'])
-            all_negative_df.to_pickle("universal_negatives."+outf,compression="gzip")
+            all_negative_df.to_pickle(universal_negatives_outf,compression="gzip")
 
 def args_object_from_args_dict(args_dict):
     #create an argparse.Namespace from the dictionary of inputs
