@@ -10,7 +10,8 @@ import pandas as pd
 import numpy as np
 from .attrib_config import *
 from .utils import *
-from concurrent.futures import ProcessPoolExecutor
+from ..bounded_process_pool_executor import *
+#from concurrent.futures import ProcessPoolExecutor
 #from multiprocessing import Pool 
 import pdb
 
@@ -153,23 +154,23 @@ def write_array_to_tiledb(size,
     pool_inputs.append((array_out_name,i+batch_size,num_entries,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
     print("length of pool inputs:"+str(len(pool_inputs)))
     try:
-        with ProcessPoolExecutor(max_workers=write_threads,initializer=init_worker) as pool:
+        with BoundedProcessPoolExecutor(max_workers=write_threads,initializer=init_worker) as pool:
             print("made pool")
-            futures=pool.map(write_chunk,pool_inputs)
+            results=pool.map(write_chunk,pool_inputs)
+            for job in futures.as_completed(results):
+                del job 
         print("done writing")
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
-        pool.terminate()
-        pool.join() 
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.terminate()
-        pool.join()
+        pool.shudown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e
@@ -267,24 +268,22 @@ def create_tiledb_array(inputs):
             size=row[1]
             array_out_name='.'.join([array_outf_prefix,chrom])
             pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args))
-        with ProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
+        with BoundedProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
             print("made pool!")
-            cur_futures=pool.map(process_chrom,pool_inputs)
-            #for entry in pool_inputs:
-            #    result=process_chrom(entry)
+            results=pool.map(process_chrom,pool_inputs)
+            for job in futures.as_completed(results):
+                del job 
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
-        pool.terminate()
-        pool.join() 
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.terminate()
-        pool.join()
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e
@@ -300,7 +299,8 @@ def ingest(args):
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
     print("loaded chrom sizes")
-    pool_inputs=[] 
+    pool_inputs=[]
+    
     #check if the tiledb_group exists, and if not, create it
     if tiledb.object_type(args.tiledb_group) is not 'group':        
         group_uri=tiledb.group_create(args.tiledb_group)
@@ -308,24 +308,25 @@ def ingest(args):
     else:
         group_uri=args.tiledb_group
         print("tiledb group already exists")
+        
     for index,row in tiledb_metadata.iterrows():
         pool_inputs.append([row,args,chrom_sizes,attribute_info])
     try:
-        with ProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool:
+        with BoundedProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool:
             results=pool.map(create_tiledb_array,pool_inputs)
+            for job in futures.as_completed(results):
+                del job 
     except KeyboardInterrupt:
         print("keyboard interrupt detected")
         #shutdown the pool
-        pool.terminate()
-        pool.join() 
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.terminate()
-        pool.join()
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e

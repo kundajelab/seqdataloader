@@ -11,7 +11,13 @@ from .classification_label_protocols import *
 from .regression_label_protocols import * 
 import gzip 
 import os
-from concurrent.futures import ProcessPoolExecutor
+from ..bounded_process_pool_executor import *
+#from concurrent.futures import BoundedProcessPoolExecutor
+#graceful shutdown
+import psutil
+import signal 
+import os
+
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
 labeling_approaches={
@@ -21,6 +27,19 @@ labeling_approaches={
     "peak_percent_overlap_with_bin_regression":peak_percent_overlap_with_bin_regression,
     "all_genome_bins_regression":all_genome_bins_regression
     }
+ 
+def init_worker():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+def kill_child_processes(parent_pid, sig=signal.SIGTERM):
+    try:
+        parent = psutil.Process(parent_pid)
+    except psutil.NoSuchProcess:
+        return
+    children = parent.children(recursive=True)
+    for process in children:
+        process.send_signal(sig)
+
 
 def parse_args():
     parser=argparse.ArgumentParser(description="Generate genome-wide labeled bins for a set of narrowPeak task files ")
@@ -103,10 +122,24 @@ def get_chrom_labels(inputs):
         task_bigwig=bed_and_bigwig_dict[task_name]['bigwig']
         task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
         pool_inputs.append((task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args))
+    try:
+        with BoundedProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool: 
+            bin_values=pool.map(get_labels_one_task,pool_inputs)
+    except KeyboardInterrupt:
+        print('detected keyboard interrupt')
+        #shutdown the pool
+        pool.shutdown(wait=False)
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise 
+    except Exception as e:
+        print(repr(e))
+        #shutdown the pool
+        pool.shudown(wait=False)
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise e
 
-    with ProcessPoolExecutor(max_workers=args.task_threads) as pool: 
-        bin_values=pool.map(get_labels_one_task,pool_inputs)
-    
     for task_name,task_labels in bin_values:
         if task_labels is None:
             continue
@@ -315,8 +348,23 @@ def genomewide_labels(args):
         chrom_size=row[1]
         pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
     print("creating chromosome thread pool")
-    with ProcessPoolExecutor(max_workers=args.chrom_threads) as pool: 
-        processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
+    try:
+        with BoundedProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool: 
+            processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
+    except KeyboardInterrupt:
+        print('detected keyboard interrupt')
+        #shutdown the pool
+        pool.shutdown(wait=False)
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise 
+    except Exception as e:
+        print(repr(e))
+        #shutdown the pool
+        pool.shudown(wait=False)
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise e
 
     #if the user is happy with separate files for each chromosome, these have already been written to disk. We are done 
     if args.split_output_by_chrom==True:
