@@ -212,30 +212,46 @@ def write_output(task_names,full_df,first_chrom,args,mode='w',task_split_engaged
         else:
             universal_negatives_outf='.'.join([outf,"universal_negatives"])        
     if args.output_type=="gzip":
-        full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
-        if all_negative_df is not None:
-            all_negative_df.to_csv(universal_negatives_outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
+        try:
+            full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
+            if all_negative_df is not None:
+                all_negative_df.to_csv(universal_negatives_outf,sep='\t',header=header,index=False,mode=mode+'b',compression='gzip',chunksize=1000000)
+        except:
+            print("warning! some chromosomes in your file are too small to produce values, skipping") 
+            pass
+            
     elif args.output_type=="bz2":
-        full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
-        if all_negative_df is not None:
-            all_negative_df.to_csv(universal_negatives_outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
+        try:
+            full_df.to_csv(outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
+            if all_negative_df is not None:
+                all_negative_df.to_csv(universal_negatives_outf,sep='\t',header=header,index=False,mode=mode+'b',compression='bz2',chunksize=1000000)
+        except:
+            print("warning! some chromosomes in your file are too small to produce values, skipping") 
+            pass
     elif args.output_type=="hdf5":
         full_df=full_df.set_index(['CHR','START','END'])
         if mode=='w':
             append=False
         else:
             append=True
-        full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
-        if all_negative_df is not None:
-            all_negative_df.set_index(['CHR','START','END'])
-            all_negative_df.to_hdf(universal_negatives_outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
+        try:
+            full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
+            if all_negative_df is not None:
+                all_negative_df.set_index(['CHR','START','END'])
+                all_negative_df.to_hdf(universal_negatives_outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
+        except:
+            print("warning! some chromosomes in your file are too small to produce values, skipping") 
+            pass
     elif args.output_type=="pkl":
-        full_df=full_df.set_index(['CHR','START','END'])        
-        full_df.to_pickle(outf,compression="gzip")
-        if all_negative_df is not None:
-            all_negative_df.set_index(['CHR','START','END'])
-            all_negative_df.to_pickle(universal_negatives_outf,compression="gzip")
-
+        full_df=full_df.set_index(['CHR','START','END'])
+        try:
+            full_df.to_pickle(outf,compression="gzip")
+            if all_negative_df is not None:
+                all_negative_df.set_index(['CHR','START','END'])
+                all_negative_df.to_pickle(universal_negatives_outf,compression="gzip")
+        except:
+            print("warning! some chromosomes in your file are too small to produce values, skipping") 
+            pass
 def args_object_from_args_dict(args_dict):
     #create an argparse.Namespace from the dictionary of inputs
     args_object=argparse.Namespace()
