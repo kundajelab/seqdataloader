@@ -1,14 +1,14 @@
 import pandas as pd
 import numpy as np
 import pyBigWig
-
+from itertools import islice
 
 def open_bigwig_for_parsing(fname):
-    #return pyBigWig.open(fname)
     return fname
 
 def open_csv_for_parsing(fname):
-    return pd.read_csv(fname,header=None,sep='\t') 
+    return fname
+
 
 def parse_bigwig_chrom_vals(bigwig_name,chrom,size,store_summits,summit_indicator):
     bigwig_object=pyBigWig.open(bigwig_name)
@@ -16,9 +16,11 @@ def parse_bigwig_chrom_vals(bigwig_name,chrom,size,store_summits,summit_indicato
     signal_data=np.nan_to_num(bigwig_object.values(chrom,0,size))
     return signal_data
 
-def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_indicator):
+def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,size,store_summits,summit_indicator):
+    narrowPeak_df=pd.read_csv(narrowPeak_fname,header=None,sep='\t') 
     signal_data = np.zeros(size, dtype=np.int)
     chrom_subset_df=narrowPeak_df[narrowPeak_df[0]==chrom]
+    del narrowPeak_df
     nitems_in_row=chrom_subset_df.shape[1]
     if (store_summits==True) and (chrom_subset_df.shape[1]<10):
         print("warning! dataset does not have 10 columns of the standard narrowPeak format, falling back to peak centers")
@@ -39,3 +41,12 @@ def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_in
     return signal_data 
 
     
+def chunkify(iterable,chunk):
+    it=iter(iterable)
+    while True:
+        piece=list(islice(it,chunk))
+        if piece:
+            yield piece
+        else:
+            return
+        
