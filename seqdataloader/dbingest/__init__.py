@@ -12,7 +12,6 @@ from .attrib_config import *
 from .utils import *
 from ..bounded_process_pool_executor import *
 from concurrent import futures 
-#from concurrent.futures import ProcessPoolExecutor
 #from multiprocessing import Pool 
 import pdb
 import gc
@@ -305,6 +304,8 @@ def create_tiledb_array(inputs):
                 for future in futures.as_completed(future_to_element):
                     elt=future_to_element[future]
                     del elt
+                    gc.collect()
+                    
         del pool_inputs
         del data_dict
         gc.collect()
@@ -361,6 +362,7 @@ def ingest(args):
                 for future in futures.as_completed(future_to_element):
                     elt=future_to_element[future]
                     del elt
+                    gc.collect() 
     except KeyboardInterrupt:
         print("keyboard interrupt detected")
         #shutdown the pool
