@@ -10,15 +10,34 @@ def open_csv_for_parsing(fname):
     return fname
 
 
-def parse_bigwig_chrom_vals(bigwig_name,chrom,size,store_summits,summit_indicator):
+def parse_bigwig_chrom_vals(entry):
+    bigwig_name=entry[0]
+    chrom=entry[1]
+    start=entry[2]
+    end=entry[3]
+    cur_attribute_info=entry[4]
+    store_summits=None
+    summit_indicator=None
+    if 'store_summits' in cur_attribute_info:
+        store_summits=cur_attribute_info['store_summits']
+    if 'summit_indicator' in cur_attribute_info:
+        summit_indicator=cur_attribute_info['summit_indicator']
     bigwig_object=pyBigWig.open(bigwig_name)
     #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0.
-    signal_data=np.nan_to_num(bigwig_object.values(chrom,0,size))
-    return signal_data
+    signal_data=np.nan_to_num(bigwig_object.values(chrom,start,end))
+    return start, end, signal_data
 
-def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,size,store_summits,summit_indicator):
-    narrowPeak_df=pd.read_csv(narrowPeak_fname,header=None,sep='\t') 
-    signal_data = np.zeros(size, dtype=np.int)
+
+def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,start,end,cur_attribute_info):
+    store_summits=None
+    summit_indicator=None
+    if 'store_summits' in cur_attribute_info:
+        store_summits=cur_attribute_info['store_summits']
+    if 'summit_indicator' in cur_attribute_info:
+        summit_indicator=cur_attribute_info['summit_indicator']
+
+    narrowPeak_df=pd.read_csv(narrowPeak_fname,header=None,sep='\t')
+    signal_data = np.zeros(end, dtype=np.int)
     chrom_subset_df=narrowPeak_df[narrowPeak_df[0]==chrom]
     del narrowPeak_df
     nitems_in_row=chrom_subset_df.shape[1]
@@ -37,7 +56,6 @@ def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,size,store_summits,summit
             summits.append(summit_pos)
     if store_summits is True:
         signal_data[summits]=summit_indicator
-    assert min(signal_data)==0 #sanity check 
     return signal_data 
 
     
@@ -49,4 +67,3 @@ def chunkify(iterable,chunk):
             yield piece
         else:
             return
-        

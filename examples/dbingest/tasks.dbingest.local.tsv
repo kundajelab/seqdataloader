@@ -1,0 +1,2 @@
+dataset	idr_peak	fc_bigwig	ambig_peak
+ENCFF209DJG	ENCFF209DJG.bed.gz	ENCFF842XRQ.bigWig	hg38.blacklist.bed.gz

@@ -178,7 +178,7 @@ def get_bed_and_bigwig_dict(tasks):
                 task_bigwig=pyBigWig.open(row["bigwig"])
             except:
                 raise Exception("Could not parse:"+str(row["bigwig"]))
-        bed_and_bigwig_dict[task_name]['bigwig']=row[2] #need to parse the pyBigWig inside Pool
+        bed_and_bigwig_dict[task_name]['bigwig']=row['bigwig'] #need to parse the pyBigWig inside Pool
         
         #get the ambiguous peaks
         if "ambig"  not in row: 
