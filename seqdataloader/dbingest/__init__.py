@@ -95,6 +95,7 @@ def create_new_array(size,
     for key in attribute_info:
         attribs.append(tiledb.Attr(
             name=key,
+            filters=tiledb.FilterList([tiledb.GzipFilter()]),
             dtype=attribute_info[key]['dtype']))
     tiledb_schema = tiledb.ArraySchema(
         domain=tiledb_dom,
