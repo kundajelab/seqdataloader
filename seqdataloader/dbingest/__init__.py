@@ -86,7 +86,8 @@ def create_new_array(size,
     tiledb_dim = tiledb.Dim(
         name='genome_coordinate',
         domain=(0, size - 1),
-        tile=tile_size)
+        tile=tile_size,
+        dtype='uint32')
     tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context)
 
     #generate the attribute information

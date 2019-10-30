@@ -12,7 +12,6 @@ from .regression_label_protocols import *
 import gzip 
 import os
 from ..bounded_process_pool_executor import *
-#from concurrent.futures import BoundedProcessPoolExecutor
 #graceful shutdown
 import psutil
 import signal 
@@ -125,6 +124,7 @@ def get_chrom_labels(inputs):
     try:
         with BoundedProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool: 
             bin_values=pool.map(get_labels_one_task,pool_inputs)
+        pool.shutdown(wait=True)
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
@@ -162,6 +162,7 @@ def get_bed_and_bigwig_dict(tasks):
         if "narrowPeak" not in row: 
             task_bed=None
         else:
+            print(row['narrowPeak'])
             assert os.path.exists(row["narrowPeak"])
             try:
                 task_bed=BedTool(row["narrowPeak"])
@@ -173,6 +174,7 @@ def get_bed_and_bigwig_dict(tasks):
         if "bigwig"  not in row: 
             task_bigwig=None
         else:
+            print(row['bigwig'])
             assert os.path.exists(row["bigwig"])
             try:
                 task_bigwig=pyBigWig.open(row["bigwig"])
@@ -351,6 +353,7 @@ def genomewide_labels(args):
     try:
         with BoundedProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool: 
             processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
+        pool.shutdown(wait=True)
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
