@@ -4,7 +4,6 @@ db_ingest --tiledb_metadata tasks.dbingest.local.tsv \
     --overwrite \
     --chrom_sizes hg38.chrom.sizes \
     --chrom_threads 25 \
-    --write_threads 2 \
     --attribute_config encode_pipeline \
     --tile_size 9000 \
     --batch_size 1000000

@@ -28,9 +28,7 @@ tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
                           "sm.num_writer_threads":"50",
                           "sm.num_reader_threads":"50",
                           "sm.num_async_threads":"50",
-                          "vfs.num_threads":"50"})
-tdb_Context=tiledb.Ctx(config=tdb_Config) 
-    
+                          "vfs.num_threads":"50"})    
 def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -48,7 +46,6 @@ def args_object_from_args_dict(args_dict):
     args_object=argparse.Namespace()
     #set the defaults
     vars(args_object)['chrom_threads']=1
-    vars(args_object)['write_threads']=1
     vars(args_object)['overwrite']=False
     vars(args_object)['batch_size']=10000000
     vars(args_object)['tile_size']=90000
@@ -66,7 +63,6 @@ def parse_args():
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
     parser.add_argument("--chrom_threads",type=int,default=1,help="inner thread pool, launched by task_threads")
-    parser.add_argument("--write_threads",type=int,default=1)
     parser.add_argument("--batch_size",type=int,default=10000000,help="num entries to write at once")
     parser.add_argument("--tile_size",type=int,default=90000,help="tile size")
     parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig")
@@ -88,7 +84,7 @@ def create_new_array(size,
         domain=(0, size - 1),
         tile=tile_size,
         dtype='uint32')
-    tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context)
+    tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tiledb.Ctx(config=tdb_Config) )
 
     #generate the attribute information
     attribute_info=get_attribute_info(attribute_config)
@@ -108,72 +104,6 @@ def create_new_array(size,
     print("created empty array on disk")
     return
     
-def write_array_to_tiledb(inputs):
-    print("starting to write output")
-    try:
-        size=inputs[0]
-        attribute_config=inputs[1]
-        dict_to_write=inputs[2]
-        array_out_name=inputs[3]
-        updating=inputs[4]
-        batch_size=inputs[5]
-        compressor='gzip'
-        compression_level=-1
-
-        if updating is True:
-            #we are only updating some attributes in the array
-            print(array_out_name)
-            with tiledb.DenseArray(array_out_name,mode='r') as cur_array:
-                cur_vals=cur_array[:]            
-            print('got cur vals') 
-            for key in dict_to_write:
-                cur_vals[key]=dict_to_write[key]
-            dict_to_write=cur_vals
-            print("updated data dict for writing") 
-        else:
-            #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
-            required_attrib=list(get_attribute_info(attribute_config).keys())
-            for attrib in required_attrib:
-                if attrib not in dict_to_write:
-                    dict_to_write[attrib]=np.full(size,np.nan)
-        dict_keys=list(dict_to_write.keys())
-        num_entries=len(dict_to_write[dict_keys[0]])
-        for i in range(0,num_entries,batch_size):
-            subdict={}
-            for key in dict_keys:
-                subdict[key]=dict_to_write[key][i:i+batch_size]
-            with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config),mode='w') as out_array:
-                out_array[i:i+batch_size]=subdict
-            print("Wrote:"+array_out_name+":"+str(i)+":"+str(i+batch_size))
-        subdict={}
-        for key in dict_keys:
-            subdict[key]=dict_to_write[key][i+batch_size:num_entries]
-        with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config),mode='w') as out_array:
-            out_array[i+batch_size:num_entries]=subdict
-        return
-    except KeyboardInterrupt:
-        print('detected keyboard interrupt')
-        # Kill remaining child processes
-        kill_child_processes(os.getpid())
-        raise 
-    except Exception as e:
-        print(repr(e))
-        # Kill remaining child processes
-        kill_child_processes(os.getpid())
-        raise e
-    
-def write_chunk(inputs):
-    array_out_name=inputs[0]
-    start=inputs[1]
-    end=inputs[2]
-    sub_dict=inputs[3]
-    #print(array_out_name)
-    #print("start:"+str(start))
-    #print("end:"+str(end))
-    with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config),mode='w') as out_array:
-        out_array[start:end]=sub_dict
-        print("done with chunk start:"+str(start)+", end:"+str(end))
-    return "done"
 
 def extract_metadata_field(row,field):
     dataset=row['dataset'] 
@@ -210,13 +140,13 @@ def parse_input_chunks(chrom,size,parser_chunk,data_dict,attribute_info,attribut
         #with Pool(args.chrom_threads,initializer=init_worker) as pool:
         with ThreadPool(args.chrom_threads) as pool:
             results=pool.map(cur_parser,pool_inputs)
-            pool.close()
-            pool.join()
-            for elt in results:
-                elt_start=elt[0]
-                elt_end=elt[1]
-                elt_val=elt[2]
-                vals[elt_start:elt_end]=elt_val
+        pool.close()
+        pool.join()
+        for elt in results:
+            elt_start=elt[0]
+            elt_end=elt[1]
+            elt_val=elt[2]
+            vals[elt_start:elt_end]=elt_val
         return vals
     except KeyboardInterrupt:
         print("keyboard interrupt detected")
@@ -238,7 +168,6 @@ def ingest(args):
         if type(args)==type({}):
             args=args_object_from_args_dict(args)
         overwrite=args.overwrite
-        write_threads=args.write_threads
         chrom_threads=args.chrom_threads
         batch_size=args.batch_size
         tile_size=args.tile_size
@@ -287,8 +216,8 @@ def ingest(args):
             #with ThreadPool(chrom_threads) as pool:
                 print("made pool")
                 res=pool.map(process_chrom,pool_inputs)
-                pool.close()
-                pool.join()
+            pool.close()
+            pool.join()
             print("wrote chrom array for task:"+str(dataset))
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
@@ -344,43 +273,16 @@ def process_chrom(inputs):
             for attrib in required_attrib:
                 if attrib not in dict_to_write:
                     dict_to_write[attrib]=np.full(size,np.nan)
-
-        write_pool_inputs=[] 
-        dict_keys=list(dict_to_write.keys())
-        num_entries=len(dict_to_write[dict_keys[0]])
-        for i in range(0,num_entries,batch_size):
-            subdict={}
-            for key in dict_keys:
-                start_coord=i
-                end_coord=min([i+batch_size,num_entries])
-                subdict[key]=dict_to_write[key][start_coord:end_coord]
-            write_pool_inputs.append((array_out_name,start_coord,end_coord,subdict))
-        if num_entries > (i+batch_size):
-            subdict={}
-            for key in dict_keys:
-                start_coord=i+batch_size
-                end_coord=num_entries
-                subdict[key]=dict_to_write[key][i+batch_size:num_entries]
-                write_pool_inputs.append((array_out_name,start_coord,end_coord,subdict))
-        #with Pool(args.write_threads,initializer=init_worker) as pool:
-        with ThreadPool(args.write_threads) as pool:
-            print("made pool")
-            res=pool.map(write_chunk,write_pool_inputs)
-            pool.close()
-            pool.join()
-            print("wrote chrom"+str(chrom))        
-        return 0
+        with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config) ,mode='w') as out_array:
+            out_array[:]=dict_to_write
+            print("wrote to disk:"+array_out_name)
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
-        #shutdown the pool
-        pool.terminate() 
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
-        #shutdown the pool
-        pool.terminate() 
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e
