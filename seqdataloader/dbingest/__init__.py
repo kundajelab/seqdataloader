@@ -48,6 +48,7 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['chrom_threads']=1
     vars(args_object)['overwrite']=False
     vars(args_object)['batch_size']=10000000
+    vars(args_object)['write_chunk']=None
     vars(args_object)['tile_size']=90000
     vars(args_object)['attribute_config']='encode_pipeline'
     for key in args_dict:
@@ -63,7 +64,8 @@ def parse_args():
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
     parser.add_argument("--chrom_threads",type=int,default=1,help="inner thread pool, launched by task_threads")
-    parser.add_argument("--batch_size",type=int,default=10000000,help="num entries to write at once")
+    parser.add_argument("--batch_size",type=int,default=10000000,help="num entries to read from bigwig at once")
+    parser.add_argument("--write_chunk",type=int,default=None,help="number of bases to write to disk in one tileDB DenseArray write operation") 
     parser.add_argument("--tile_size",type=int,default=90000,help="tile size")
     parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig")
     return parser.parse_args()
@@ -127,12 +129,18 @@ def open_data_for_parsing(row,attribute_info):
     except Exception as e:
         print(repr(e))
         raise e
-    
+
+def get_subdict(full_dict,start,end):
+    subdict=dict()
+    for key in full_dict:
+        subdict[key]=full_dict[key][start:end]
+    return subdict
+
 def parse_input_chunks(chrom,size,parser_chunk,data_dict,attribute_info,attribute,cur_parser,args):
     try:
         vals=np.empty((size,))
         pool_inputs=[] 
-        for chrom_pos in range(0,size,parser_chunk):
+        for chrom_pos in range(0,size+parser_chunk,parser_chunk):
             cur_start=chrom_pos
             cur_end=min([cur_start+parser_chunk,size])
             pool_inputs.append((data_dict[attribute],chrom,cur_start,cur_end,attribute_info[attribute]))
@@ -274,7 +282,17 @@ def process_chrom(inputs):
                 if attrib not in dict_to_write:
                     dict_to_write[attrib]=np.full(size,np.nan)
         with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config) ,mode='w') as out_array:
-            out_array[:]=dict_to_write
+            if args.write_chunk is None:
+                #write the full chromosome 
+                out_array[:]=dict_to_write
+            else:
+                #write in chunks
+                for chunk_index in range(0,size+args.write_chunk,args.write_chunk):
+                    start_pos=chunk_index
+                    if start_pos<size: 
+                        end_pos=min([size,chunk_index+args.write_chunk])
+                        out_array[start_pos:end_pos]=get_subdict(dict_to_write,start_pos,end_pos)
+                        print("wrote:"+str(start_pos)+"-"+str(end_pos)+ " for:"+array_out_name)
             print("wrote to disk:"+array_out_name)
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
