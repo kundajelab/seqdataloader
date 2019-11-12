@@ -106,18 +106,19 @@ def create_new_array(size,
     return
 
 def write_chunk(inputs):
-    array_out_name=inputs[0]
-    start=inputs[1]
-    end=inputs[2]
-    sub_dict=inputs[3]
-    batch_size=inputs[4]
-    print("start:"+str(start)+", end:"+str(end))
-    ctx = tiledb.Ctx()
-    with tiledb.DenseArray(array_out_name,ctx=ctx,mode='w') as out_array:
-        out_array[start:end]=sub_dict
-        print("done with chunk start:"+str(start)+", end:"+str(end)) 
-    return "done"
-    
+    try:
+        array_out_name=inputs[0]
+        start=int(inputs[1])
+        end=int(inputs[2])
+        sub_dict=inputs[3]
+        batch_size=inputs[4]
+        print("start:"+str(start)+", end:"+str(end))
+        with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(),mode='w') as out_array:
+            out_array[start:end]=sub_dict
+            print("done with chunk start:"+str(start)+", end:"+str(end)) 
+        return "done"
+    except Exception as e:
+        raise(e)
 def write_array_to_tiledb(size,
                           attribute_config,
                           dict_to_write,
@@ -145,31 +146,35 @@ def write_array_to_tiledb(size,
             if attrib not in dict_to_write:
                 dict_to_write[attrib]=np.full(size,np.nan)
     print("finalizing the write")
+    
     df=pd.DataFrame.from_dict(dict_to_write)
     num_entries=df.shape[0]
     pool_inputs=[]
     for i in range(0,num_entries,batch_size):
-        pool_inputs.append((array_out_name,i,i+batch_size,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
-    pool_inputs.append((array_out_name,i+batch_size,num_entries,df.iloc[i:i+batch_size].to_dict(orient="list"),batch_size))
+        sub_dict=dict()
+        for key in dict_to_write:
+            sub_dict[key]=dict_to_write[key][i:i+batch_size]
+            print(type(sub_dict[key]))
+        pool_inputs.append((array_out_name,i,min([i+batch_size,num_entries]),sub_dict,batch_size))
+
     print("length of pool inputs:"+str(len(pool_inputs)))
     try:
         with ProcessPoolExecutor(max_workers=write_threads,initializer=init_worker) as pool:
             print("made pool")
-            futures=pool.map(write_chunk,pool_inputs)
+            for status in pool.map(write_chunk,pool_inputs):
+                print(status) 
         print("done writing")
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
-        pool.terminate()
-        pool.join() 
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.terminate()
-        pool.join()
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e
@@ -275,16 +280,14 @@ def create_tiledb_array(inputs):
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
-        pool.terminate()
-        pool.join() 
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.terminate()
-        pool.join()
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e
@@ -316,16 +319,14 @@ def ingest(args):
     except KeyboardInterrupt:
         print("keyboard interrupt detected")
         #shutdown the pool
-        pool.terminate()
-        pool.join() 
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.terminate()
-        pool.join()
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e

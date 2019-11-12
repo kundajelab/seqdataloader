@@ -14,6 +14,7 @@ def parse_bigwig_chrom_vals(bigwig_name,chrom,size,store_summits,summit_indicato
     bigwig_object=pyBigWig.open(bigwig_name)
     #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0.
     signal_data=np.nan_to_num(bigwig_object.values(chrom,0,size))
+    print(signal_data.max())
     return signal_data
 
 def parse_narrowPeak_chrom_vals(narrowPeak_df,chrom,size,store_summits,summit_indicator):
