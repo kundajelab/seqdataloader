@@ -154,7 +154,7 @@ def write_array_to_tiledb(size,
         sub_dict=dict()
         for key in dict_to_write:
             sub_dict[key]=dict_to_write[key][i:i+batch_size]
-            print(type(sub_dict[key]))
+            #print(type(sub_dict[key]))
         pool_inputs.append((array_out_name,i,min([i+batch_size,num_entries]),sub_dict,batch_size))
 
     print("length of pool inputs:"+str(len(pool_inputs)))

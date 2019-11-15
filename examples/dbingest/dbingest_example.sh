@@ -1,10 +1,10 @@
 #!/bin/bash
-db_ingest --tiledb_metadata tasks.dbingest.tsv \
+db_ingest --tiledb_metadata tasks.dbingest.local.tsv \
     --tiledb_group hepg2_dnase_encode \
     --overwrite \
-    --chrom_sizes hg38.chrom21.sizes \
+    --chrom_sizes hg38.chrom.sizes \
     --chrom_threads 25 \
-    --task_threads 1 \
-    --write_threads 1 \
-    --attribute_config encode_pipeline
+    --attribute_config encode_pipeline \
+    --tile_size 9000 \
+    --batch_size 1000000
 
