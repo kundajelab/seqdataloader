@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import pyBigWig
+import pdb 
 from itertools import islice
 
 def open_bigwig_for_parsing(fname):
@@ -19,7 +20,14 @@ def parse_bigwig_chrom_vals(bigwig_name,chrom,start,end,cur_attribute_info):
         summit_indicator=cur_attribute_info['summit_indicator']
     bigwig_object=pyBigWig.open(bigwig_name)
     #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0.
-    signal_data=np.nan_to_num(bigwig_object.values(chrom,start,end))
+    #check to see if chromosome in bigwig, if not, return all NA's & warning that chromosome is not present in the dataset
+    bw_chroms=bigwig_object.chroms().keys()
+    if chrom not in bw_chroms:
+        print("WARNING: chromosome:"+str(chrom) +" was not found in the bigwig file:"+str(bigwig_name))
+        size=(end-start+1)
+        signal_data=np.full(size,np.nan)
+    else: 
+        signal_data=np.nan_to_num(bigwig_object.values(chrom,start,end))
     return signal_data
 
 
