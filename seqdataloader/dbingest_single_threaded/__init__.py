@@ -21,10 +21,11 @@ import gc
 tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
                           "sm.check_coord_oob":"false",
                           "sm.check_global_order":"false",
-                          "sm.num_writer_threads":"20",
-                          "sm.num_reader_threads":"20",
-                          "sm.num_async_threads":"20",
-                          "vfs.num_threads":"20"})
+                          "sm.num_writer_threads":"50",
+                          "sm.num_reader_threads":"50",
+                          "sm.num_async_threads":"50",
+                          "vfs.num_threads":"50",
+                          "sm.memory_budget":"5000000000"})
 
 #tdb_Config=tiledb.Config({"sm.num_writer_threads":"20",
 #                          "sm.num_reader_threads":"20",
@@ -190,8 +191,8 @@ def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,ar
         #we are only updating some attributes in the array
         with tiledb.DenseArray(array_out_name,mode='r',ctx=tdb_Context) as cur_array:
         #with tiledb.DenseArray(array_out_name,mode='r',ctx=tiledb.Ctx(config=tdb_Config)) as cur_array:
-
             cur_vals=cur_array[:]            
+        del cur_array
         print('got cur vals for'+array_out_name) 
         for key in dict_to_write:
             cur_vals[key]=dict_to_write[key]
@@ -216,6 +217,8 @@ def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,ar
                     end_pos=min([size,chunk_index+args.write_chunk])
                     out_array[start_pos:end_pos]=get_subdict(dict_to_write,start_pos,end_pos)
                     print("wrote:"+str(start_pos)+"-"+str(end_pos)+ " for:"+array_out_name)
+    del out_array 
+    gc.collect() 
     print("wrote to disk:"+array_out_name)
     
 def main():
