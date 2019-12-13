@@ -31,7 +31,11 @@ def parse_bigwig_chrom_vals(entry):
         signal_data=np.full(size,np.nan)
     else: 
         #check to see if chromosome in bigwig, if not, return all NA's & warning that chromosome is not present in the dataset
-        signal_data=np.nan_to_num(bigwig_object.values(chrom,start,end))
+        try:
+            signal_data=np.nan_to_num(bigwig_object.values(chrom,start,end))
+        except Exception as e:
+            print(chrom+"\t"+str(start)+"\t"+str(end)+str(cur_attribute_info))
+            raise e
     return start, end, signal_data
 
 

@@ -11,7 +11,7 @@ import numpy as np
 from collections import OrderedDict
 from .attrib_config import *
 from .utils import *
-from multiprocessing.pool import Pool, ThreadPool 
+from multiprocessing.pool import Pool, ThreadPool, get_context 
 import pdb
 import gc
 
@@ -19,7 +19,7 @@ import gc
 import psutil
 import signal 
 import os
-
+import gc 
 
 #config
 tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
@@ -28,7 +28,9 @@ tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
                           "sm.num_writer_threads":"50",
                           "sm.num_reader_threads":"50",
                           "sm.num_async_threads":"50",
-                          "vfs.num_threads":"50"})    
+                          "vfs.num_threads":"50",
+                          "sm.memory_budget":"5000000000"})
+tdb_Context=tiledb.Ctx(config=tdb_Config) 
 def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -86,7 +88,7 @@ def create_new_array(size,
         domain=(0, size - 1),
         tile=tile_size,
         dtype='uint32')
-    tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tiledb.Ctx(config=tdb_Config) )
+    tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context )
 
     #generate the attribute information
     attribute_info=get_attribute_info(attribute_config)
@@ -102,8 +104,9 @@ def create_new_array(size,
         cell_order='row-major',
         tile_order='row-major')
     
-    tiledb.DenseArray.create(array_out_name, tiledb_schema)
+    tiledb.DenseArray.create(array_out_name, tiledb_schema,ctx=tdb_Context)
     print("created empty array on disk")
+    gc.collect() 
     return
     
 
@@ -140,12 +143,12 @@ def parse_input_chunks(chrom,size,parser_chunk,data_dict,attribute_info,attribut
     try:
         vals=np.empty((size,))
         pool_inputs=[] 
-        for chrom_pos in range(0,size+parser_chunk,parser_chunk):
+        for chrom_pos in range(0,size,parser_chunk):
             cur_start=chrom_pos
             cur_end=min([cur_start+parser_chunk,size])
             pool_inputs.append((data_dict[attribute],chrom,cur_start,cur_end,attribute_info[attribute]))
         #iterate through the tasks 
-        #with Pool(args.chrom_threads,initializer=init_worker) as pool:
+        #with get_context('spawn').Pool(args.chrom_threads,initializer=init_worker) as pool:
         with ThreadPool(args.chrom_threads) as pool:
             results=pool.map(cur_parser,pool_inputs)
         pool.close()
@@ -155,6 +158,7 @@ def parse_input_chunks(chrom,size,parser_chunk,data_dict,attribute_info,attribut
             elt_end=elt[1]
             elt_val=elt[2]
             vals[elt_start:elt_end]=elt_val
+        print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))
         return vals
     except KeyboardInterrupt:
         print("keyboard interrupt detected")
@@ -226,6 +230,7 @@ def ingest(args):
                 res=pool.map(process_chrom,pool_inputs)
             pool.close()
             pool.join()
+            print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))
             print("wrote chrom array for task:"+str(dataset))
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
@@ -256,7 +261,6 @@ def process_chrom(inputs):
         dict_to_write=OrderedDict() 
         for attribute in data_dict:
             cur_parser=attribute_info[attribute]['parser']
-            print(cur_parser)
             if cur_parser is parse_bigwig_chrom_vals:
                dict_to_write[attribute]=parse_input_chunks(chrom,size,batch_size,data_dict,attribute_info,attribute,cur_parser,args)
             else:
@@ -268,9 +272,11 @@ def process_chrom(inputs):
         if updating is True:
             #we are only updating some attributes in the array
             print(array_out_name)
-            with tiledb.DenseArray(array_out_name,mode='r') as cur_array:
+            with tiledb.DenseArray(array_out_name,ctx=tdb_Context,mode='r') as cur_array:
                 cur_vals=cur_array[:]            
-            print('got cur vals') 
+            print('got cur vals')
+            del cur_array
+            gc.collect() 
             for key in dict_to_write:
                 cur_vals[key]=dict_to_write[key]
             dict_to_write=cur_vals
@@ -281,7 +287,7 @@ def process_chrom(inputs):
             for attrib in required_attrib:
                 if attrib not in dict_to_write:
                     dict_to_write[attrib]=np.full(size,np.nan)
-        with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config) ,mode='w') as out_array:
+        with tiledb.DenseArray(array_out_name,ctx=tdb_Context ,mode='w') as out_array:
             if args.write_chunk is None:
                 #write the full chromosome 
                 out_array[:]=dict_to_write
@@ -294,6 +300,8 @@ def process_chrom(inputs):
                         out_array[start_pos:end_pos]=get_subdict(dict_to_write,start_pos,end_pos)
                         print("wrote:"+str(start_pos)+"-"+str(end_pos)+ " for:"+array_out_name)
             print("wrote to disk:"+array_out_name)
+            del out_array
+            gc.collect() 
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         # Kill remaining child processes
