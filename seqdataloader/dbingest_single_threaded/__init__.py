@@ -3,7 +3,9 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import psutil
+#import multiprocessing as mp
+#mpx = mp.get_context('spawn')
 import tiledb
 import pdb
 import argparse
@@ -15,15 +17,18 @@ from .utils import *
 import gc
 
 #config
+
 tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
                           "sm.check_coord_oob":"false",
                           "sm.check_global_order":"false",
-                          "sm.num_writer_threads":"50",
-                          "sm.num_reader_threads":"50",
-                          "sm.num_async_threads":"50",
-                          "vfs.num_threads":"50",
-                          "sm.memory_budget":"5000000000"})
+                          "sm.num_writer_threads":"20",
+                          "sm.num_reader_threads":"20",
+                          "sm.num_async_threads":"20",
+                          "vfs.num_threads":"20"})
 
+#tdb_Config=tiledb.Config({"sm.num_writer_threads":"20",
+#                          "sm.num_reader_threads":"20",
+#                          "sm.num_async_threads":"20"})
 tdb_Context=tiledb.Ctx(config=tdb_Config) 
     
 def args_object_from_args_dict(args_dict):
@@ -68,6 +73,7 @@ def create_new_array(size,
         tile=tile_size,
         dtype='uint32')
     tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context)
+    #tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tiledb.Ctx(config=tdb_Config))
 
     #generate the attribute information
     attribute_info=get_attribute_info(attribute_config)
@@ -167,6 +173,7 @@ def ingest_single_threaded(args):
                                  tile_size=tile_size)
                 
                 print("created new array:"+str(array_out_name))
+            print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))
             process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,args)
             print("wrote chrom array for task:"+str(dataset))
 
@@ -181,7 +188,9 @@ def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,ar
 
     if updating is True:
         #we are only updating some attributes in the array
-        with tiledb.DenseArray(array_out_name,mode='r') as cur_array:
+        with tiledb.DenseArray(array_out_name,mode='r',ctx=tdb_Context) as cur_array:
+        #with tiledb.DenseArray(array_out_name,mode='r',ctx=tiledb.Ctx(config=tdb_Config)) as cur_array:
+
             cur_vals=cur_array[:]            
         print('got cur vals for'+array_out_name) 
         for key in dict_to_write:
@@ -195,6 +204,7 @@ def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,ar
             if attrib not in dict_to_write:
                 dict_to_write[attrib]=np.full(size,np.nan)
     with tiledb.DenseArray(array_out_name,ctx=tdb_Context,mode='w') as out_array:
+    #with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config),mode='w') as out_array:
         if args.write_chunk is None:
             #write the full chromosome 
             out_array[:]=dict_to_write
