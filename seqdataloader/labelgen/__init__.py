@@ -146,8 +146,7 @@ def get_chrom_labels(inputs):
         chrom_df[task_name]=task_labels
     if args.split_output_by_chrom==True:
         assert args.output_type in ["gzip","bz2"]
-        index_label=['Chrom','Start','End']
-        chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=True,index_label=index_label,mode='wb',compression=args.output_type,chunksize=1000000) 
+        chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000) 
     return (chrom, chrom_df)
 
 def get_bed_and_bigwig_dict(tasks):
