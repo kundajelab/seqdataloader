@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import pyBigWig
+import pdb 
 from itertools import islice
 
 def open_bigwig_for_parsing(fname):
@@ -10,12 +11,7 @@ def open_csv_for_parsing(fname):
     return fname
 
 
-def parse_bigwig_chrom_vals(entry):
-    bigwig_name=entry[0]
-    chrom=entry[1]
-    start=entry[2]
-    end=entry[3]
-    cur_attribute_info=entry[4]
+def parse_bigwig_chrom_vals(bigwig_name,chrom,start,end,cur_attribute_info):
     store_summits=None
     summit_indicator=None
     if 'store_summits' in cur_attribute_info:
@@ -24,19 +20,15 @@ def parse_bigwig_chrom_vals(entry):
         summit_indicator=cur_attribute_info['summit_indicator']
     bigwig_object=pyBigWig.open(bigwig_name)
     #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0.
+    #check to see if chromosome in bigwig, if not, return all NA's & warning that chromosome is not present in the dataset
     bw_chroms=bigwig_object.chroms().keys()
     if chrom not in bw_chroms:
-        print("WARNING: chromosome:"+str(chrom)+ " was not found in the bigwig file:"+str(bigwig_name))
+        print("WARNING: chromosome:"+str(chrom) +" was not found in the bigwig file:"+str(bigwig_name))
         size=(end-start+1)
         signal_data=np.full(size,np.nan)
     else: 
-        #check to see if chromosome in bigwig, if not, return all NA's & warning that chromosome is not present in the dataset
-        try:
-            signal_data=np.nan_to_num(bigwig_object.values(chrom,start,end))
-        except Exception as e:
-            print(chrom+"\t"+str(start)+"\t"+str(end)+str(cur_attribute_info))
-            raise e
-    return start, end, signal_data
+        signal_data=np.nan_to_num(bigwig_object.values(chrom,start,end))
+    return signal_data
 
 
 def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,start,end,cur_attribute_info):
@@ -46,7 +38,6 @@ def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,start,end,cur_attribute_i
         store_summits=cur_attribute_info['store_summits']
     if 'summit_indicator' in cur_attribute_info:
         summit_indicator=cur_attribute_info['summit_indicator']
-
 
     narrowPeak_df=pd.read_csv(narrowPeak_fname,header=None,sep='\t')
     signal_data = np.zeros(end, dtype=np.int)
@@ -69,13 +60,3 @@ def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,start,end,cur_attribute_i
     if store_summits is True:
         signal_data[summits]=summit_indicator
     return signal_data 
-
-    
-def chunkify(iterable,chunk):
-    it=iter(iterable)
-    while True:
-        piece=list(islice(it,chunk))
-        if piece:
-            yield piece
-        else:
-            return

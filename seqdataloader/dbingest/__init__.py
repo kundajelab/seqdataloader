@@ -8,17 +8,29 @@ import tiledb
 import argparse
 import pandas as pd
 import numpy as np
+from collections import OrderedDict
 from .attrib_config import *
 from .utils import *
-from concurrent.futures import ProcessPoolExecutor
-#from multiprocessing import Pool 
+from multiprocessing.pool import Pool, ThreadPool, get_context 
 import pdb
+import gc
 
 #graceful shutdown
 import psutil
 import signal 
 import os
+import gc 
 
+#config
+tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
+                          "sm.check_coord_oob":"false",
+                          "sm.check_global_order":"false",
+                          "sm.num_writer_threads":"50",
+                          "sm.num_reader_threads":"50",
+                          "sm.num_async_threads":"50",
+                          "vfs.num_threads":"50",
+                          "sm.memory_budget":"5000000000"})
+tdb_Context=tiledb.Ctx(config=tdb_Config) 
 def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -30,24 +42,23 @@ def kill_child_processes(parent_pid, sig=signal.SIGTERM):
     children = parent.children(recursive=True)
     for process in children:
         process.send_signal(sig)
+        
 def args_object_from_args_dict(args_dict):
     #create an argparse.Namespace from the dictionary of inputs
     args_object=argparse.Namespace()
     #set the defaults
     vars(args_object)['chrom_threads']=1
-    vars(args_object)['task_threads']=1
-    vars(args_object)['write_threads']=1
     vars(args_object)['overwrite']=False
-    vars(args_object)['batch_size']=1000000
-    vars(args_object)['tile_size']=10000
-    vars(args_object)['attribute_config']='encode_pipeline' 
+    vars(args_object)['batch_size']=10000000
+    vars(args_object)['write_chunk']=None
+    vars(args_object)['tile_size']=90000
+    vars(args_object)['attribute_config']='encode_pipeline'
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
     args=args_object    
     return args 
-
-
+    
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
     parser.add_argument("--tiledb_metadata",help="fields are: dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, idr_peak, overlap_peak, ambig_peak")
@@ -55,11 +66,10 @@ def parse_args():
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
     parser.add_argument("--chrom_threads",type=int,default=1,help="inner thread pool, launched by task_threads")
-    parser.add_argument("--task_threads",type=int,default=1,help="outer thread pool,launched by main thread")
-    parser.add_argument("--write_threads",type=int,default=1)
-    parser.add_argument("--batch_size",type=int,default=1000000,help="num entries to write at once")
-    parser.add_argument("--tile_size",type=int,default=10000,help="tile size")
-    parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig") 
+    parser.add_argument("--batch_size",type=int,default=10000000,help="num entries to read from bigwig at once")
+    parser.add_argument("--write_chunk",type=int,default=None,help="number of bases to write to disk in one tileDB DenseArray write operation") 
+    parser.add_argument("--tile_size",type=int,default=90000,help="tile size")
+    parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig")
     return parser.parse_args()
 
 def create_new_array(size,
@@ -78,14 +88,7 @@ def create_new_array(size,
         domain=(0, size - 1),
         tile=tile_size,
         dtype='uint32')
-    #config
-    tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
-                              "sm.check_coord_oob":"false",
-                              "sm.check_global_order":"false",
-                              "sm.num_writer_threads":50,
-                              "sm.num_reader_threads":50})
-    tdb_Context=tiledb.Ctx(config=tdb_Config)
-    tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context)
+    tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context )
 
     #generate the attribute information
     attribute_info=get_attribute_info(attribute_config)
@@ -101,83 +104,11 @@ def create_new_array(size,
         cell_order='row-major',
         tile_order='row-major')
     
-    tiledb.DenseArray.create(array_out_name, tiledb_schema)
-    print("created empty array on disk") 
+    tiledb.DenseArray.create(array_out_name, tiledb_schema,ctx=tdb_Context)
+    print("created empty array on disk")
+    gc.collect() 
     return
 
-def write_chunk(inputs):
-    try:
-        array_out_name=inputs[0]
-        start=int(inputs[1])
-        end=int(inputs[2])
-        sub_dict=inputs[3]
-        batch_size=inputs[4]
-        print("start:"+str(start)+", end:"+str(end))
-        with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(),mode='w') as out_array:
-            out_array[start:end]=sub_dict
-            print("done with chunk start:"+str(start)+", end:"+str(end)) 
-        return "done"
-    except Exception as e:
-        raise(e)
-def write_array_to_tiledb(size,
-                          attribute_config,
-                          dict_to_write,
-                          array_out_name,
-                          batch_size=10000,
-                          compressor='gzip',
-                          compression_level=-1,
-                          updating=False,
-                          write_threads=1):
-    print("starting to write output") 
-    if updating is True:
-        #we are only updating some attributes in the array
-        with tiledb.DenseArray(array_out_name,mode='r',ctx=tiledb.Ctx()) as cur_array:
-            cur_vals=cur_array[:]
-        print('got cur vals') 
-        for key in dict_to_write:
-            cur_vals[key]=dict_to_write[key]
-            print("dict_to_write[key].shape:"+str(dict_to_write[key].shape))
-        dict_to_write=cur_vals
-        print("updated data dict for writing") 
-    else:
-        #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
-        required_attrib=list(get_attribute_info(attribute_config).keys())
-        for attrib in required_attrib:
-            if attrib not in dict_to_write:
-                dict_to_write[attrib]=np.full(size,np.nan)
-    print("finalizing the write")
-    
-    df=pd.DataFrame.from_dict(dict_to_write)
-    num_entries=df.shape[0]
-    pool_inputs=[]
-    for i in range(0,num_entries,batch_size):
-        sub_dict=dict()
-        for key in dict_to_write:
-            sub_dict[key]=dict_to_write[key][i:i+batch_size]
-            #print(type(sub_dict[key]))
-        pool_inputs.append((array_out_name,i,min([i+batch_size,num_entries]),sub_dict,batch_size))
-
-    print("length of pool inputs:"+str(len(pool_inputs)))
-    try:
-        with ProcessPoolExecutor(max_workers=write_threads,initializer=init_worker) as pool:
-            print("made pool")
-            for status in pool.map(write_chunk,pool_inputs):
-                print(status) 
-        print("done writing")
-    except KeyboardInterrupt:
-        print('detected keyboard interrupt')
-        #shutdown the pool
-        pool.shutdown(wait=False)
-        # Kill remaining child processes
-        kill_child_processes(os.getpid())
-        raise 
-    except Exception as e:
-        print(repr(e))
-        #shutdown the pool
-        pool.shutdown(wait=False)
-        # Kill remaining child processes
-        kill_child_processes(os.getpid())
-        raise e
 
 def extract_metadata_field(row,field):
     dataset=row['dataset'] 
@@ -202,141 +133,192 @@ def open_data_for_parsing(row,attribute_info):
         print(repr(e))
         raise e
 
-def process_chrom(inputs):
-    chrom=inputs[0]
-    size=inputs[1]
-    array_out_name=inputs[2]
-    data_dict=inputs[3]
-    attribute_info=inputs[4]
-    args=inputs[5]
-    overwrite=args.overwrite
-    write_threads=args.write_threads
-    batch_size=args.batch_size
-    tile_size=args.tile_size
-    attribute_config=args.attribute_config
-    updating=False
-    if tiledb.object_type(array_out_name) == "array":
-        if overwrite==False:
-            raise Exception("array:"+str(array_out_name) + "already exists; use the --overwrite flag to overwrite it. Exiting")
-        else:
-            print("warning: the array: "+str(array_out_name)+" already exists. You provided the --overwrite flag, so it will be updated/overwritten")
-            updating=True
-    else:
-        #create the array:
-        create_new_array(size=size,
-                         attribute_config=attribute_config,
-                         array_out_name=array_out_name,
-                         tile_size=tile_size)
-        print("created new array:"+str(array_out_name))
-    dict_to_write=dict()
-    for attribute in data_dict:
-        store_summits=False
-        summit_indicator=None
-        if 'store_summits' in attribute_info[attribute]:
-            store_summits=attribute_info[attribute]['store_summits']
-        print("store_summits:"+str(store_summits))
-        if 'summit_indicator' in attribute_info[attribute]: 
-            summit_indicator=attribute_info[attribute]['summit_indicator']
-        print("summit_indicator:"+str(summit_indicator))
-        dict_to_write[attribute]=attribute_info[attribute]['parser'](data_dict[attribute],chrom,size,store_summits,summit_indicator)
-        print("got:"+str(attribute)+" for chrom:"+str(chrom))
-    
-    write_array_to_tiledb(size=size,
-                          attribute_config=attribute_config,
-                          dict_to_write=dict_to_write,
-                          array_out_name=array_out_name,
-                          updating=updating,
-                          batch_size=batch_size,
-                          write_threads=write_threads)
-    print("wrote array to disk for dataset:"+str(array_out_name))         
-    return 'done'
+def get_subdict(full_dict,start,end):
+    subdict=dict()
+    for key in full_dict:
+        subdict[key]=full_dict[key][start:end]
+    return subdict
 
-def create_tiledb_array(inputs):
-    '''
-    create new tileDB array for a single dataset, overwrite if array exists and user sets --overwrite flag
-    '''
+def parse_input_chunks(chrom,size,parser_chunk,data_dict,attribute_info,attribute,cur_parser,args):
     try:
-        row=inputs[0]
-        args=inputs[1]
-        chrom_sizes=inputs[2]
-        attribute_info=inputs[3] 
-        #get the current dataset
-        dataset=row['dataset']    
-        #read in filenames for bigwigs
-        data_dict=open_data_for_parsing(row,attribute_info)
+        vals=np.empty((size,))
         pool_inputs=[] 
-        array_outf_prefix="/".join([args.tiledb_group,dataset])
-        print("parsed pool inputs") 
-        for index, row in chrom_sizes.iterrows():
-            chrom=row[0]
-            size=row[1]
-            array_out_name='.'.join([array_outf_prefix,chrom])
-            pool_inputs.append((chrom,size,array_out_name,data_dict,attribute_info,args))
-        with ProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
-            print("made pool!")
-            cur_futures=pool.map(process_chrom,pool_inputs)
-            #for entry in pool_inputs:
-            #    result=process_chrom(entry)
-    except KeyboardInterrupt:
-        print('detected keyboard interrupt')
-        #shutdown the pool
-        pool.shutdown(wait=False)
-        # Kill remaining child processes
-        kill_child_processes(os.getpid())
-        raise 
-    except Exception as e:
-        print(repr(e))
-        #shutdown the pool
-        pool.shutdown(wait=False)
-        # Kill remaining child processes
-        kill_child_processes(os.getpid())
-        raise e
-    return "done"
-
-    
-def ingest(args):
-    if type(args)==type({}):
-        args=args_object_from_args_dict(args)
-        
-    attribute_info=get_attribute_info(args.attribute_config) 
-    tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
-    print("loaded tiledb metadata")
-    chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
-    print("loaded chrom sizes")
-    pool_inputs=[] 
-    #check if the tiledb_group exists, and if not, create it
-    if tiledb.object_type(args.tiledb_group) is not 'group':        
-        group_uri=tiledb.group_create(args.tiledb_group)
-        print("created tiledb group") 
-    else:
-        group_uri=args.tiledb_group
-        print("tiledb group already exists")
-    for index,row in tiledb_metadata.iterrows():
-        pool_inputs.append([row,args,chrom_sizes,attribute_info])
-    try:
-        with ProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool:
-            results=pool.map(create_tiledb_array,pool_inputs)
+        for chrom_pos in range(0,size,parser_chunk):
+            cur_start=chrom_pos
+            cur_end=min([cur_start+parser_chunk,size])
+            pool_inputs.append((data_dict[attribute],chrom,cur_start,cur_end,attribute_info[attribute]))
+        #iterate through the tasks 
+        #with get_context('spawn').Pool(args.chrom_threads,initializer=init_worker) as pool:
+        with ThreadPool(args.chrom_threads) as pool:
+            results=pool.map(cur_parser,pool_inputs)
+        pool.close()
+        pool.join()
+        for elt in results:
+            elt_start=elt[0]
+            elt_end=elt[1]
+            elt_val=elt[2]
+            vals[elt_start:elt_end]=elt_val
+        print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))
+        return vals
     except KeyboardInterrupt:
         print("keyboard interrupt detected")
         #shutdown the pool
-        pool.shutdown(wait=False)
+        pool.terminate()
+
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.shutdown(wait=False)
+        pool.terminate() 
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise e                
+    
+def ingest(args):
+    try:
+        if type(args)==type({}):
+            args=args_object_from_args_dict(args)
+        overwrite=args.overwrite
+        chrom_threads=args.chrom_threads
+        batch_size=args.batch_size
+        tile_size=args.tile_size
+        attribute_config=args.attribute_config
+        updating=False
+
+        attribute_info=get_attribute_info(args.attribute_config) 
+        tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
+
+        print("loaded tiledb metadata")
+        chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
+        print("loaded chrom sizes")
+
+        #check if the tiledb_group exists, and if not, create it
+        if tiledb.object_type(args.tiledb_group) is not 'group':        
+            group_uri=tiledb.group_create(args.tiledb_group)
+            print("created tiledb group") 
+        else:
+            group_uri=args.tiledb_group
+            print("tiledb group already exists")        
+        for task_index,task_row in tiledb_metadata.iterrows():            
+            dataset=task_row['dataset']    
+            #read in filenames for bigwigs
+            data_dict=open_data_for_parsing(task_row,attribute_info)
+            array_outf_prefix="/".join([args.tiledb_group,dataset])
+            pool_inputs=[]
+            for chrom_index, chrom_row in chrom_sizes.iterrows():
+                chrom=chrom_row[0]
+                size=chrom_row[1]
+                array_out_name='.'.join([array_outf_prefix,chrom])                
+                if tiledb.object_type(array_out_name) == "array":
+                    if overwrite==False:
+                        raise Exception("array:"+str(array_out_name) + "already exists; use the --overwrite flag to overwrite it. Exiting")
+                    else:
+                        print("warning: the array: "+str(array_out_name)+" already exists. You provided the --overwrite flag, so it will be updated/overwritten")
+                        updating=True
+                else:
+                    #create the array:
+                    create_new_array(size=size,
+                                     attribute_config=attribute_config,
+                                     array_out_name=array_out_name,
+                                     tile_size=tile_size)
+                    print("created new array:"+str(array_out_name))
+                pool_inputs.append((data_dict,attribute_info,chrom,size,array_out_name,updating,args))
+            with Pool(chrom_threads,initializer=init_worker) as pool:
+            #with ThreadPool(chrom_threads) as pool:
+                print("made pool")
+                res=pool.map(process_chrom,pool_inputs)
+            pool.close()
+            pool.join()
+            print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))
+            print("wrote chrom array for task:"+str(dataset))
+    except KeyboardInterrupt:
+        print('detected keyboard interrupt')
+        #shutdown the pool
+        pool.terminate() 
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise 
+    except Exception as e:
+        print(repr(e))
+        #shutdown the pool
+        pool.terminate() 
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e
-    return "done"
+
+def process_chrom(inputs):
+    try:
+        data_dict=inputs[0]
+        attribute_info=inputs[1]
+        chrom=inputs[2]
+        size=inputs[3]
+        array_out_name=inputs[4]
+        updating=inputs[5]
+        args=inputs[6]
+        attribute_config=args.attribute_config
+        batch_size=args.batch_size
+        dict_to_write=OrderedDict() 
+        for attribute in data_dict:
+            cur_parser=attribute_info[attribute]['parser']
+            if cur_parser is parse_bigwig_chrom_vals:
+               dict_to_write[attribute]=parse_input_chunks(chrom,size,batch_size,data_dict,attribute_info,attribute,cur_parser,args)
+            else:
+                dict_to_write[attribute]=cur_parser(data_dict[attribute],chrom,0,size,attribute_info[attribute])
+            print("got:"+str(attribute)+" for chrom:"+str(chrom))
+            compressor='gzip'
+            compression_level=-1
+
+        if updating is True:
+            #we are only updating some attributes in the array
+            print(array_out_name)
+            with tiledb.DenseArray(array_out_name,ctx=tdb_Context,mode='r') as cur_array:
+                cur_vals=cur_array[:]            
+            print('got cur vals')
+            del cur_array
+            gc.collect() 
+            for key in dict_to_write:
+                cur_vals[key]=dict_to_write[key]
+            dict_to_write=cur_vals
+            print("updated data dict for writing") 
+        else:
+            #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
+            required_attrib=list(get_attribute_info(attribute_config).keys())
+            for attrib in required_attrib:
+                if attrib not in dict_to_write:
+                    dict_to_write[attrib]=np.full(size,np.nan)
+        with tiledb.DenseArray(array_out_name,ctx=tdb_Context ,mode='w') as out_array:
+            if args.write_chunk is None:
+                #write the full chromosome 
+                out_array[:]=dict_to_write
+            else:
+                #write in chunks
+                for chunk_index in range(0,size+args.write_chunk,args.write_chunk):
+                    start_pos=chunk_index
+                    if start_pos<size: 
+                        end_pos=min([size,chunk_index+args.write_chunk])
+                        out_array[start_pos:end_pos]=get_subdict(dict_to_write,start_pos,end_pos)
+                        print("wrote:"+str(start_pos)+"-"+str(end_pos)+ " for:"+array_out_name)
+            print("wrote to disk:"+array_out_name)
+            del out_array
+            gc.collect() 
+    except KeyboardInterrupt:
+        print('detected keyboard interrupt')
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise 
+    except Exception as e:
+        print(repr(e))
+        # Kill remaining child processes
+        kill_child_processes(os.getpid())
+        raise e
+     
 
 def main():
     args=parse_args()
     ingest(args)
-    
-    
+        
 if __name__=="__main__":
     main() 
     

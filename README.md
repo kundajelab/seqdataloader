@@ -143,6 +143,7 @@ You may speed up i/o by writing chromosome outputs to separate files in parallel
 The input tsv file must have a subset of the columns corresponding to the supported configurations: 
 ```
  * encode_config 
+        ** dataset
 	** fc_bigwig 
 	** pval_bigwig
 	** count_bigwig_plus_5p
