@@ -108,7 +108,7 @@ def create_new_array(size,
     print("created empty array on disk")
     gc.collect() 
     return
-    
+
 
 def extract_metadata_field(row,field):
     dataset=row['dataset'] 
@@ -164,6 +164,7 @@ def parse_input_chunks(chrom,size,parser_chunk,data_dict,attribute_info,attribut
         print("keyboard interrupt detected")
         #shutdown the pool
         pool.terminate()
+
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise 

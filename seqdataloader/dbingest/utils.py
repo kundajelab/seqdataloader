@@ -47,6 +47,7 @@ def parse_narrowPeak_chrom_vals(narrowPeak_fname,chrom,start,end,cur_attribute_i
     if 'summit_indicator' in cur_attribute_info:
         summit_indicator=cur_attribute_info['summit_indicator']
 
+
     narrowPeak_df=pd.read_csv(narrowPeak_fname,header=None,sep='\t')
     signal_data = np.zeros(end, dtype=np.int)
     chrom_subset_df=narrowPeak_df[narrowPeak_df[0]==chrom]
