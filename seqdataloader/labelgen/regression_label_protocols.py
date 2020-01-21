@@ -69,7 +69,6 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
             chromosome_min_bin_index-=1
             max_bin_start+=args.bin_stride
             chromosome_max_bin_index+=1
-            
         #get mean coverage in bigwig for each bin specified above
         index_coverage_vals=chromosome_min_bin_index
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):

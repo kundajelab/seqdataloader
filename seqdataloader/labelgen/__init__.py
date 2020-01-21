@@ -91,14 +91,13 @@ def get_labels_one_task(inputs):
     return labeling_approaches[args.labeling_approach](task_name,task_bed,task_bigwig,task_ambig,chrom,first_coord,final_coord,args)    
     
 def get_chrom_labels(inputs):
-
+    #print(inputs)
     #unravel inputs 
     chrom=inputs[0]
     chrom_size=inputs[1]
     bed_and_bigwig_dict=inputs[2]
     tasks=inputs[3]
     args=inputs[4] 
-
     #pre-allocate a pandas data frame to store bin labels for the current chromosome. Fill with zeros    
     #determine the index tuple values
     try:
@@ -145,8 +144,11 @@ def get_chrom_labels(inputs):
             continue
         chrom_df[task_name]=task_labels
     if args.split_output_by_chrom==True:
-        assert args.output_type in ["gzip","bz2"]
-        chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000) 
+        if args.output_type in ["gzip","bz2"]: 
+            chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000)
+        elif args.output_type == "hdf5":
+            chrom_df=chrom_df.set_index(['CHR','START','END'])
+            chrom_df.to_hdf(args.outf+"."+chrom,key="data",mode='w', append=True, format='table',min_itemsize={'CHR':30})
     return (chrom, chrom_df)
 
 def get_bed_and_bigwig_dict(tasks):
@@ -163,10 +165,7 @@ def get_bed_and_bigwig_dict(tasks):
         else:
             print(row['narrowPeak'])
             assert os.path.exists(row["narrowPeak"])
-            try:
-                task_bed=BedTool(row["narrowPeak"])
-            except:
-                raise Exception("Could not parse:"+str(row["narrowPeak"]))
+            task_bed=row['narrowPeak']
         bed_and_bigwig_dict[task_name]['bed']=task_bed
         
         #get the BigWig file associated with the task (if provided)
@@ -175,10 +174,7 @@ def get_bed_and_bigwig_dict(tasks):
         else:
             print(row['bigwig'])
             assert os.path.exists(row["bigwig"])
-            try:
-                task_bigwig=pyBigWig.open(row["bigwig"])
-            except:
-                raise Exception("Could not parse:"+str(row["bigwig"]))
+            task_bigwig=row['bigwig']
         bed_and_bigwig_dict[task_name]['bigwig']=task_bigwig
         
         #get the ambiguous peaks
@@ -186,15 +182,13 @@ def get_bed_and_bigwig_dict(tasks):
             ambig_bed=None
         else: 
             assert os.path.exists(row["ambig"])
-            try:
-                ambig_bed=BedTool(row["ambig"])
-            except:
-                raise Exception("Could not parse:"+str(row["ambig"]))
+            ambig_bed=row['ambig']
         bed_and_bigwig_dict[task_name]['ambig']=ambig_bed
         
     return bed_and_bigwig_dict
 
 def get_indices(chrom,chrom_size,args):
+    print("getting indices")
     final_bin_start=((chrom_size-args.right_flank-args.bin_size)//args.bin_stride)*args.bin_stride
     #final_coord=(chrom_size//args.bin_stride)*args.bin_stride
     first_bin_start=args.left_flank
@@ -326,9 +320,6 @@ def genomewide_labels(args):
     #path to ambiguous peaks in column 4 (bed) 
     tasks=pd.read_csv(args.task_list,sep=args.task_list_sep,header=0)
     bed_and_bigwig_dict=get_bed_and_bigwig_dict(tasks) 
-
-    #col1: chrom name
-    #col2: chrom size 
     chrom_sizes=pd.read_csv(args.chrom_sizes,sep='\t',header=None)
 
     processed_first_chrom=False
@@ -350,8 +341,8 @@ def genomewide_labels(args):
         pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
     print("creating chromosome thread pool")
     try:
-        with BoundedProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool: 
-            processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
+        with BoundedProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
+            mapped=pool.map(get_chrom_labels,pool_args)
         pool.shutdown(wait=True)
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
@@ -363,7 +354,7 @@ def genomewide_labels(args):
     except Exception as e:
         print(repr(e))
         #shutdown the pool
-        pool.shudown(wait=False)
+        pool.shutdown(wait=False)
         # Kill remaining child processes
         kill_child_processes(os.getpid())
         raise e
@@ -388,8 +379,8 @@ def main():
     genomewide_labels(args)
     
 if __name__=="__main__":
-    #try:
-    #    multiprocessing.set_start_method('spawn')
-    #except:
-    #    print("context already set") 
+    try:
+        multiprocessing.set_start_method('forkserver')
+    except:
+        print("context already set") 
     main()
