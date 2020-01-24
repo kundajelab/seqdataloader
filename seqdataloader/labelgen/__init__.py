@@ -342,7 +342,7 @@ def genomewide_labels(args):
     print("creating chromosome thread pool")
     try:
         with BoundedProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
-            mapped=pool.map(get_chrom_labels,pool_args)
+            processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
         pool.shutdown(wait=True)
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
