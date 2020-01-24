@@ -380,7 +380,7 @@ def main():
     
 if __name__=="__main__":
     try:
-        multiprocessing.set_start_method('forkserver')
+        multiprocessing.set_start_method('fork')
     except:
         print("context already set") 
     main()
