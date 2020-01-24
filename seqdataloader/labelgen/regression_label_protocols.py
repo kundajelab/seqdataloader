@@ -35,6 +35,9 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     '''
     print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
     task_bigwig=pyBigWig.open(task_bigwig)
+    task_bed=BedTool(task_bed)
+    if task_ambig is not None:
+        task_ambig=BedTool(task_ambig) 
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates 
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
@@ -108,6 +111,9 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
     print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
     task_bigwig=pyBigWig.open(task_bigwig)
+    task_bed=BedTool(task_bed)
+    if task_ambig is not None:
+        task_ambig=BedTool(task_ambig) 
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
@@ -181,6 +187,9 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
     '''
     print("starting chromosome:"+str(chrom)+" for task:"+str(task_name))
     task_bigwig=pyBigWig.open(task_bigwig)
+    if task_ambig is not None:
+        task_ambig=BedTool(task_ambig) 
+
     #get the BigWig value at each position along the chromosome, (cutting off anything that extends beyond final_coord)
     try:
         values=task_bigwig.values(chrom,first_bin_start,final_bin_start+args.bin_size,numpy=True)

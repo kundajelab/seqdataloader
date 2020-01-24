@@ -21,6 +21,8 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
     '''
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
     task_bed=BedTool(task_bed)
+    if task_ambig is not None: 
+        task_ambig=BedTool(task_ambig)
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
@@ -94,6 +96,8 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
     '''
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
     task_bed=BedTool(task_bed)
+    if task_ambig is not None: 
+        task_ambig=BedTool(task_ambig)
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
