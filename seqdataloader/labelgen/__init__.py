@@ -11,11 +11,13 @@ from .classification_label_protocols import *
 from .regression_label_protocols import * 
 import gzip 
 import os
-from ..bounded_process_pool_executor import *
+#from ..bounded_process_pool_executor import *
+from concurrent.futures import * 
 #graceful shutdown
 import psutil
 import signal 
 import os
+import gc
 
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
@@ -92,7 +94,7 @@ def get_labels_one_task(inputs):
     
 def get_chrom_labels(inputs):
     #print(inputs)
-    #unravel inputs 
+    #unravel inputs
     chrom=inputs[0]
     chrom_size=inputs[1]
     bed_and_bigwig_dict=inputs[2]
@@ -121,9 +123,10 @@ def get_chrom_labels(inputs):
         task_ambig=bed_and_bigwig_dict[task_name]['ambig'] 
         pool_inputs.append((task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args))
     try:
-        with BoundedProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool: 
+        with ProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool: 
             bin_values=pool.map(get_labels_one_task,pool_inputs)
-        pool.shutdown(wait=True)
+            pool.shutdown(wait=True)
+            del pool
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
@@ -341,9 +344,12 @@ def genomewide_labels(args):
         pool_args.append((chrom,chrom_size,bed_and_bigwig_dict,tasks,args))
     print("creating chromosome thread pool")
     try:
-        with BoundedProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
+        #with ThreadPool(args.chrom_threads) as pool:
+        with ProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
             processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
-        pool.shutdown(wait=True)
+            pool.shutdown(wait=True)
+            del pool
+
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
@@ -380,7 +386,7 @@ def main():
     
 if __name__=="__main__":
     try:
-        multiprocessing.set_start_method('fork')
+        multiprocessing.set_start_method('forkserver')
     except:
         print("context already set") 
     main()
