@@ -16,8 +16,10 @@ from concurrent.futures import *
 #graceful shutdown
 import psutil
 import signal 
-import os
 import gc
+import string
+import random 
+import pickle
 
 #Approaches to determining classification labels
 #Others can be added here (imported from classification_label_protocols) 
@@ -28,6 +30,11 @@ labeling_approaches={
     "peak_percent_overlap_with_bin_regression":peak_percent_overlap_with_bin_regression,
     "all_genome_bins_regression":all_genome_bins_regression
     }
+
+def randomString(stringLength=16):
+    """Generate a random string of fixed length """
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
  
 def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -72,7 +79,7 @@ def parse_args():
                                                        "all_genome_bins_regression"])
     parser.add_argument("--label_transformer",default="asinh",help="type of transformation to apply to the labels; one of None, asinh, log10, log")
     parser.add_argument("--label_transformer_pseudocount",type=float,default=0.001,help="pseudocount to add to values if using log10 or log label transformations")
-    
+    parser.add_argument("--temp_dir",default="/tmp") 
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
         sys.exit(1)       
@@ -126,7 +133,6 @@ def get_chrom_labels(inputs):
         with ProcessPoolExecutor(max_workers=args.task_threads,initializer=init_worker) as pool: 
             bin_values=pool.map(get_labels_one_task,pool_inputs)
             pool.shutdown(wait=True)
-            del pool
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
         #shutdown the pool
@@ -152,7 +158,16 @@ def get_chrom_labels(inputs):
         elif args.output_type == "hdf5":
             chrom_df=chrom_df.set_index(['CHR','START','END'])
             chrom_df.to_hdf(args.outf+"."+chrom,key="data",mode='w', append=True, format='table',min_itemsize={'CHR':30})
-    return (chrom, chrom_df)
+        return (chrom, None)
+    else:        
+        #dump to tmp file -- needed to avoid passing very large objects between processes
+        pickle_name=randomString()
+        pickle_path='/'.join([args.temp_dir,pickle_name])
+        print("dumpting chrom outputs to pickle:"+pickle_path)
+        with open(pickle_path,'wb') as f:
+            pickle.dump(chrom_df,f)
+        return (chrom,pickle_path)
+
 
 def get_bed_and_bigwig_dict(tasks):
     print("creating dictionary of bed files and bigwig files for each task:")
@@ -305,7 +320,8 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['task_list_sep']='\t'
     vars(args_object)['bigwig_stats']='mean'
     vars(args_object)['label_transformer']='asinh'
-    vars(args_object)['label_transformer_pseudocount']=0.001 
+    vars(args_object)['label_transformer_pseudocount']=0.001
+    vars(args_object)['temp_dir']='/tmp'
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
@@ -348,7 +364,6 @@ def genomewide_labels(args):
         with ProcessPoolExecutor(max_workers=args.chrom_threads,initializer=init_worker) as pool:
             processed_chrom_outputs=pool.map(get_chrom_labels,pool_args)
             pool.shutdown(wait=True)
-            del pool
 
     except KeyboardInterrupt:
         print('detected keyboard interrupt')
@@ -370,12 +385,17 @@ def genomewide_labels(args):
         exit()
     mode='w'
     first_chrom=True
-    for chrom, chrom_df in processed_chrom_outputs:
+    for chrom, pickle_path in processed_chrom_outputs:
         #write to output file!
-        if chrom_df is None:
-            continue 
+        if pickle_path is None:
+            continue
+        print("loading temp file with chromosome data:")
+        with open(pickle_path,'rb') as f:
+            chrom_df=pickle.load(f)
         print("writing output chromosomes:"+str(chrom))
         write_output(tasks['task'],chrom_df,first_chrom,args,mode=mode)
+        #delete the temp file
+        os.remove(pickle_path) 
         first_chrom=False
         mode='a'
     print("done!")
