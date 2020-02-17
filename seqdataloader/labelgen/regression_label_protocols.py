@@ -59,8 +59,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
         label_source_dict=dict()
     else:
         label_source_dict=None 
-    
-    
+        
     for entry in chrom_task_bed:
         chrom=entry[0]
         peak_start=int(entry[1])
@@ -113,9 +112,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
                     coverage_vals[index_coverage_vals]=np.nan
                     if args.save_label_source is True:
                         if index_coverage_vals in label_source_dict:
-                            del label_source_dict[index_coverage_vals][task_name+".CHR"]
-                            del label_source_dict[index_coverage_vals][task_name+".START"]
-                            del label_source_dict[index_coverage_vals][task_name+".END"]                            
+                            del label_source_dict[index_coverage_vals]
                 index_coverage_vals+=1
 
 
@@ -207,9 +204,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
                     coverage_vals[index_coverage_vals]=np.nan
                     if args.save_label_source is True:
                         if index_coverage_vals in label_source_dict:
-                            del label_source_dict[index_coverage_vals][task_name+".CHR"]
-                            del label_source_dict[index_coverage_vals][task_name+".START"]
-                            del label_source_dict[index_coverage_vals][task_name+".END"]
+                            del label_source_dict[index_coverage_vals]
                 index_coverage_vals+=1        
 
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))

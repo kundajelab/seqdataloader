@@ -174,15 +174,12 @@ def get_chrom_labels(inputs):
         chrom_label_source_df['CHR']=chrom_df['CHR'][chrom_label_source_df.index]
         chrom_label_source_df['START']=chrom_df['START'][chrom_label_source_df.index]
         chrom_label_source_df['END']=chrom_df['END'][chrom_label_source_df.index]        
-        #reorder so that chr,start,end are at the front
+        #reorder so that chr,start,end are at the front, sort by bin start position
         ordered_cols=['CHR','START','END']+cols
-        chrom_label_source_df=chrom_label_source_df[ordered_cols]
+        chrom_label_source_df=chrom_label_source_df[ordered_cols].sort_values(by='START')
+        
     else:
         chrom_label_source_df=None
-    for col in cols:
-        if not col.endswith('CHR'):
-            chrom_label_source_df[col].astype('int16',copy=False)
-        
     if args.split_output_by_chrom==True:
         outf=add_filename_prefix(args.outf,chrom)
         if args.output_type in ["gzip","bz2"]:
@@ -202,7 +199,7 @@ def get_chrom_labels(inputs):
         #dump to tmp file -- needed to avoid passing very large objects between processes
         pickle_name=randomString()
         pickle_path='/'.join([args.temp_dir,pickle_name])
-        print("dumpting chrom outputs to pickle:"+pickle_path)
+        print("dumping chrom outputs to pickle:"+pickle_path)
         with open(pickle_path,'wb') as f:
             pickle.dump(chrom_df,f)
         return (chrom,pickle_path,chrom_label_source_df)
@@ -437,9 +434,9 @@ def genomewide_labels(args):
         with open(pickle_path,'rb') as f:
             chrom_df=pickle.load(f)
         print("writing output chromosomes:"+str(chrom))
-        write_output(tasks['task'],chrom_df,first_chrom,args,mode=mode)
         if chrom_label_source_df is not None:
             write_output(tasks['task'],chrom_label_source_df,first_chrom,args,mode=mode,labels=True)
+        write_output(tasks['task'],chrom_df,first_chrom,args,mode=mode)
         #delete the temp file
         os.remove(pickle_path) 
         first_chrom=False

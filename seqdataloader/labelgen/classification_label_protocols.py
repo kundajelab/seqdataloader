@@ -43,7 +43,6 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
         label_source_dict=dict()
     else:
         label_source_dict=None 
-
                 
     for entry in chrom_task_bed:
         chrom=entry[0]
@@ -73,9 +72,13 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
             chromosome_min_bin_index-=1
             if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
                 coverage_vals[chromosome_min_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_min_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_min_bin_index]
             chromosome_max_bin_index+=1
             if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
                 coverage_vals[chromosome_max_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_max_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_max_bin_index]
                 
     #if a bed file of ambiguous labels is specified, label them with -1
     if ((args.allow_ambiguous==True) and (chrom_ambig_bed!=None)):
@@ -97,10 +100,7 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
                     coverage_vals[index_coverage_vals]=np.nan
                     if args.save_label_source is True:
                         if index_coverage_vals in label_source_dict:
-                            del label_source_dict[index_coverage_vals][task_name+".CHR"]
-                            del label_source_dict[index_coverage_vals][task_name+".START"]
-                            del label_source_dict[index_coverage_vals][task_name+".END"]
-                                                                                    
+                            del label_source_dict[index_coverage_vals]                                                                                    
                 index_coverage_vals+=1
                 
         
@@ -165,9 +165,15 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
             if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
                 chromosome_min_bin_index-=1
                 coverage_vals[chromosome_min_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_min_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_min_bin_index]
+
             if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
                 chromosome_max_bin_index+=1
                 coverage_vals[chromosome_max_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_max_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_max_bin_index]
+
                 
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         for entry in chrom_ambig_bed:
@@ -187,11 +193,8 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
                     coverage_vals[index_coverage_vals]=np.nan
-                    if args.save_label_source is True:
-                        if index_coverage_vals in label_source_dict:
-                            del label_source_dict[index_coverage_vals][task_name+".CHR"]
-                            del label_source_dict[index_coverage_vals][task_name+".START"]
-                            del label_source_dict[index_coverage_vals][task_name+".END"]                            
+                    if (args.save_label_source is True) and (index_coverage_vals in label_source_dict):
+                        del label_source_dict[index_coverage_vals]
                     index_coverage_vals+=1
         
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
