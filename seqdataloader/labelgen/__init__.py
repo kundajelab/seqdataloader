@@ -57,7 +57,7 @@ def add_filename_prefix(fname,prefix):
         cur_dir='/'.join(splits[0:-1])
         cur_fname=splits[-1]
         modified_fname=prefix+'.'+cur_fname
-        return '/'.join(cur_dir,modified_fname)        
+        return '/'.join([cur_dir,modified_fname])        
 
 def parse_args():
     parser=argparse.ArgumentParser(description="Generate genome-wide labeled bins for a set of narrowPeak task files ")
