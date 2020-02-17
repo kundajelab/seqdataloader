@@ -179,6 +179,9 @@ def get_chrom_labels(inputs):
         chrom_label_source_df=chrom_label_source_df[ordered_cols]
     else:
         chrom_label_source_df=None
+    for col in cols:
+        if not col.endswith('CHR'):
+            chrom_label_source_df[col].astype('int16',copy=False)
         
     if args.split_output_by_chrom==True:
         outf=add_filename_prefix(args.outf,chrom)
@@ -186,14 +189,14 @@ def get_chrom_labels(inputs):
             chrom_df.to_csv(outf,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000)
         elif args.output_type == "hdf5":
             chrom_df=chrom_df.set_index(['CHR','START','END'])
-            chrom_df.to_hdf(args.outf+"."+chrom,key="data",mode='w', append=True, format='table',min_itemsize={'CHR':30})
+            chrom_df.to_hdf(args.outf+"."+chrom,key="data",mode='w', append=True, format='table',min_itemsize=30)
         if args.save_label_source is True:
             outf_labels=add_filename_prefix(args.outf,'label_source.'+chrom)
             if args.output_type in ["gzip","bz2"]:
                 chrom_label_source_df.to_csv(outf_labels,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000)
             elif args.output_type=="hdf5":
                 chrom_label_source_df=chrom_label_source_df.set_index(['CHR','START','END'])
-                chrom_label_source_df.to_hdf(outf_labels,key='data',mode='w',append=True,format='table',min_itemsize={'CHR':30})                
+                chrom_label_source_df.to_hdf(outf_labels,key='data',mode='w',append=True,format='table',min_itemsize=30)                
         return (chrom, None)
     else:        
         #dump to tmp file -- needed to avoid passing very large objects between processes
@@ -321,10 +324,10 @@ def write_output(task_names,full_df,first_chrom,args,mode='w',task_split_engaged
         else:
             append=True
         try:
-            full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
+            full_df.to_hdf(outf,key="data",mode=mode, append=append, format='table',min_itemsize=30)
             if all_negative_df is not None:
                 all_negative_df.set_index(['CHR','START','END'])
-                all_negative_df.to_hdf(universal_negatives_outf,key="data",mode=mode, append=append, format='table',min_itemsize={'CHR':30})
+                all_negative_df.to_hdf(universal_negatives_outf,key="data",mode=mode, append=append, format='table',min_itemsize=30)
         except:
             print("warning! some chromosomes in your file are too small to produce values, skipping") 
             pass
