@@ -2,7 +2,7 @@
 genomewide_labels --task_list tasks.labelgen.tsv \
 		  --outf classificationlabels.SummitWithin200bpCenter.tsv.gz \
 		  --output_type gzip \
-		  --chrom_sizes hg38.chrom.sizes \
+		  --chrom_sizes hg38.chrom21.sizes \
 		  --bin_stride 50 \
 		  --left_flank 400 \
 		  --right_flank 400 \
@@ -16,7 +16,7 @@ genomewide_labels --task_list tasks.labelgen.tsv \
 genomewide_labels --task_list tasks.labelgen.tsv \
 		  --outf classificationlabels.SummitWithin200bpCenter.hdf5 \
 		  --output_type hdf5 \
-		  --chrom_sizes hg38.chrom.sizes \
+		  --chrom_sizes hg38.chrom21.sizes \
 		  --bin_stride 50 \
 		  --left_flank 400 \
 		  --right_flank 400 \

@@ -170,11 +170,13 @@ def get_chrom_labels(inputs):
     #convert label source dictionary to dataframe
     if args.save_label_source is True:
         chrom_label_source_df=pd.DataFrame.from_dict(chrom_label_source_dict,orient='index')
+        cols=list(chrom_label_source_df.columns)
         chrom_label_source_df['CHR']=chrom_df['CHR'][chrom_label_source_df.index]
         chrom_label_source_df['START']=chrom_df['START'][chrom_label_source_df.index]
-        chrom_label_source_df['END']=chrom_df['END'][chrom_label_source_df.index]
+        chrom_label_source_df['END']=chrom_df['END'][chrom_label_source_df.index]        
         #reorder so that chr,start,end are at the front
-        chrom_label_source_df=chrom_label_source_df[-3:]+chrom_label_source_df[:-3]
+        ordered_cols=['CHR','START','END']+cols
+        chrom_label_source_df=chrom_label_source_df[ordered_cols]
     else:
         chrom_label_source_df=None
         
