@@ -55,6 +55,12 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     #pre-allocate a numpy array of 0's
     num_bins=(final_bin_start-first_bin_start)//args.bin_stride+1 
     coverage_vals=np.zeros(num_bins)
+    if args.save_label_source is True:
+        label_source_dict=dict()
+    else:
+        label_source_dict=None 
+    
+    
     for entry in chrom_task_bed:
         chrom=entry[0]
         peak_start=int(entry[1])
@@ -78,9 +84,15 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
             if index_coverage_vals>=0 and index_coverage_vals < num_bins:
                 try:
                     coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size,args.bigwig_stats)[0]
+                    if args.save_label_source is True:
+                        label_source_dict[index_coverage_vals]={}
+                        label_source_dict[index_coverage_vals][task_name+".CHR"]=chrom
+                        label_source_dict[index_coverage_vals][task_name+".START"]=peak_start
+                        label_source_dict[index_coverage_vals][task_name+".END"]=peak_end
                 except:
                     print("could not get coverage:"+str(chrom)+":"+str(bin_start)+"-"+str(bin_start+args.bin_size)+" for task:"+str(task_name))
             index_coverage_vals+=1
+            
     print("checking ambig")
     if chrom_ambig_bed!=None:
         for entry in chrom_ambig_bed:
@@ -99,10 +111,17 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals>=0 and index_coverage_vals < num_bins: 
                     coverage_vals[index_coverage_vals]=np.nan
+                    if args.save_label_source is True:
+                        if index_coverage_vals in label_source_dict:
+                            del label_source_dict[index_coverage_vals][task_name+".CHR"]
+                            del label_source_dict[index_coverage_vals][task_name+".START"]
+                            del label_source_dict[index_coverage_vals][task_name+".END"]                            
                 index_coverage_vals+=1
+
+
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     tranformed_vals=transform_label_vals(coverage_vals,args.label_transformer,args.label_transformer_pseudocount)
-    return task_name,transformed_vals
+    return task_name,transformed_vals, label_source_dict 
 
 def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args):
     '''
@@ -129,7 +148,12 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
     print("got peak subset for chrom:"+str(chrom)+" for task:"+str(task_name))
     #pre-allocate a numpy array of 0's
     num_bins=(final_bin_start-first_bin_start)//args.bin_stride+1 
-    coverage_vals=np.zeros(num_bins)    
+    coverage_vals=np.zeros(num_bins)
+    if args.save_label_source is True:
+        label_source_dict=dict()
+    else:
+        label_source_dict=None
+        
     for entry in chrom_task_bed:
         chrom=entry[0]
         peak_start=int(entry[1])
@@ -155,10 +179,15 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
             if index_coverage_vals>=0 and index_coverage_vals < num_bins:
                 try:
                     coverage_vals[index_coverage_vals]=task_bigwig.stats(chrom,bin_start,bin_start+args.bin_size,args.bigwig_stats)[0]
+                    if args.save_label_source is True:
+                        label_source_dict[index_coverage_vals]={}
+                        label_source_dict[index_coverage_vals][task_name+".CHR"]=chrom
+                        label_source_dict[index_coverage_vals][task_name+".START"]=peak_start
+                        label_source_dict[index_coverage_vals][task_name+".END"]=peak_end
                 except:
-                    print("could not get coverage:"+str(chrom)+":"+str(bin_start)+"-"+str(bin_start+args.bin_size)+" for task:"+str(task_name))
-                    
+                    print("could not get coverage:"+str(chrom)+":"+str(bin_start)+"-"+str(bin_start+args.bin_size)+" for task:"+str(task_name))                    
             index_coverage_vals+=1
+
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         for entry in chrom_ambig_bed:
             chrom=entry[0]
@@ -176,10 +205,16 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals>=0 and index_coverage_vals < num_bins:
                     coverage_vals[index_coverage_vals]=np.nan
+                    if args.save_label_source is True:
+                        if index_coverage_vals in label_source_dict:
+                            del label_source_dict[index_coverage_vals][task_name+".CHR"]
+                            del label_source_dict[index_coverage_vals][task_name+".START"]
+                            del label_source_dict[index_coverage_vals][task_name+".END"]
                 index_coverage_vals+=1        
+
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
     transformed_vals=transform_label_vals(coverage_vals,args.label_transformer,args.label_transformer_pseudocount)
-    return task_name,transformed_vals
+    return task_name,transformed_vals, label_source_dict
 
 def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args):
     '''
@@ -233,7 +268,42 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals>=0 and index_coverage_vals < num_bins: 
                     norm_bin_means[index_coverage_vals]=np.nan
-                index_coverage_vals+=1        
-    print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,norm_bin_means 
+                index_coverage_vals+=1
+
+                
+    if args.save_label_source is True:
+        assert task_bed is not None
+        print("getting source peaks for genome bins")
+        task_bed=BedTool(task_bed)
+        min_chrom_coord=first_bin_start
+        max_chrom_coord=final_bin_start
+        if min_chrom_coord >= max_chrom_coord:
+            return task_name, norm_bin_means, None 
+        chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
+        chrom_bed=BedTool(chrom_coords,from_string=True)
+        chrom_task_bed=task_bed.intersect(chrom_bed)
+        for entry in chrom_task_bed:
+            chrom=entry[0]
+            peak_start=int(entry[1])
+            peak_end=int(entry[2])
+            summit=peak_start+int(entry[-1])
+            
+            chromosome_min_bin_index=ceil((summit-args.bin_size)/args.bin_stride)
+            min_bin_start=chromosome_min_bin_index*args.bin_stride
+            chromosome_max_bin_index=floor(summit/args.bin_stride)
+            max_bin_start=chromosome_max_bin_index*args.bin_stride
+            
+            #get mean coverage in bigwig for each bin specified above
+            index_coverage_vals=chromosome_min_bin_index
+            for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
+                if index_coverage_vals>=0 and index_coverage_vals < num_bins:
+                    if norm_bin_means[index_coverage_vals] is not np.nan:
+                        label_source_dict[index_coverage_vals]={}
+                        label_source_dict[index_coverage_vals][task_name+".CHR"]=chrom
+                        label_source_dict[index_coverage_vals][task_name+".START"]=peak_start
+                        label_source_dict[index_coverage_vals][task_name+".END"]=peak_end
+                index_coverage_vals+=1            
+
+    print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))    
+    return task_name,norm_bin_means, label_source_dict
 

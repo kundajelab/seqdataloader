@@ -47,7 +47,17 @@ def kill_child_processes(parent_pid, sig=signal.SIGTERM):
     children = parent.children(recursive=True)
     for process in children:
         process.send_signal(sig)
-
+        
+def add_filename_prefix(fname,prefix):
+    splits=fname.split('/')
+    if len(splits)==1:
+        #local path
+        return prefix+'.'+fname
+    else:
+        cur_dir='/'.join(splits[0:-1])
+        cur_fname=splits[-1]
+        modified_fname=prefix+'.'+cur_fname
+        return '/'.join(cur_dir,modified_fname)        
 
 def parse_args():
     parser=argparse.ArgumentParser(description="Generate genome-wide labeled bins for a set of narrowPeak task files ")
@@ -79,7 +89,8 @@ def parse_args():
                                                        "all_genome_bins_regression"])
     parser.add_argument("--label_transformer",default="asinh",help="type of transformation to apply to the labels; one of None, asinh, log10, log")
     parser.add_argument("--label_transformer_pseudocount",type=float,default=0.001,help="pseudocount to add to values if using log10 or log label transformations")
-    parser.add_argument("--temp_dir",default="/tmp") 
+    parser.add_argument("--temp_dir",default="/tmp")
+    parser.add_argument("--save_label_source",default=False,action='store_true',help='a separate dataframe is created that stores the source file, peak region, and (if available) peak name for each genome bin, or NA')
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
         sys.exit(1)       
@@ -118,8 +129,9 @@ def get_chrom_labels(inputs):
     chrom_df = pd.DataFrame(0,index=np.arange(num_entries),columns=columns)
     chrom_df['CHR']=chroms.values
     chrom_df['START']=all_start_pos.values
-    chrom_df['END']=all_end_pos.values 
-    
+    chrom_df['END']=all_end_pos.values
+    if args.save_label_source is True:
+        chrom_label_source_dict={}
     print("pre-allocated df for chrom:"+str(chrom)+"with dimensions:"+str(chrom_df.shape))
 
     #create a thread pool to label bins, each task gets assigned a thread 
@@ -148,16 +160,38 @@ def get_chrom_labels(inputs):
         kill_child_processes(os.getpid())
         raise e
 
-    for task_name,task_labels in bin_values:
+    for task_name,task_labels,label_source_dict in bin_values:
         if task_labels is None:
             continue
         chrom_df[task_name]=task_labels
+        if args.save_label_source is True:
+            chrom_label_source_dict.update(label_source_dict)
+            
+    #convert label source dictionary to dataframe
+    if args.save_label_source is True:
+        chrom_label_source_df=pd.DataFrame.from_dict(chrom_label_source_dict,orient='index')
+        chrom_label_source_df['CHR']=chrom_df['CHR'][chrom_label_source_df.index]
+        chrom_label_source_df['START']=chrom_df['START'][chrom_label_source_df.index]
+        chrom_label_source_df['END']=chrom_df['END'][chrom_label_source_df.index]
+        #reorder so that chr,start,end are at the front
+        chrom_label_source_df=chrom_label_source_df[-3:]+chrom_label_source_df[:-3]
+    else:
+        chrom_label_source_df=None
+        
     if args.split_output_by_chrom==True:
-        if args.output_type in ["gzip","bz2"]: 
-            chrom_df.to_csv(args.outf+"."+chrom,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000)
+        outf=add_filename_prefix(args.outf,chrom)
+        if args.output_type in ["gzip","bz2"]:
+            chrom_df.to_csv(outf,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000)
         elif args.output_type == "hdf5":
             chrom_df=chrom_df.set_index(['CHR','START','END'])
             chrom_df.to_hdf(args.outf+"."+chrom,key="data",mode='w', append=True, format='table',min_itemsize={'CHR':30})
+        if args.save_label_source is True:
+            outf_labels=add_filename_prefix(args.outf,'label_source.'+chrom)
+            if args.output_type in ["gzip","bz2"]:
+                chrom_label_source_df.to_csv(outf_labels,sep='\t',float_format="%.2f",header=True,index=False,mode='wb',compression=args.output_type,chunksize=1000000)
+            elif args.output_type=="hdf5":
+                chrom_label_source_df=chrom_label_source_df.set_index(['CHR','START','END'])
+                chrom_label_source_df.to_hdf(outf_labels,key='data',mode='w',append=True,format='table',min_itemsize={'CHR':30})                
         return (chrom, None)
     else:        
         #dump to tmp file -- needed to avoid passing very large objects between processes
@@ -166,7 +200,7 @@ def get_chrom_labels(inputs):
         print("dumpting chrom outputs to pickle:"+pickle_path)
         with open(pickle_path,'wb') as f:
             pickle.dump(chrom_df,f)
-        return (chrom,pickle_path)
+        return (chrom,pickle_path,chrom_label_source_df)
 
 
 def get_bed_and_bigwig_dict(tasks):
@@ -223,23 +257,27 @@ def get_indices(chrom,chrom_size,args):
     return pd.Series(chroms),pd.Series(start_pos),pd.Series(end_pos),first_bin_start,final_bin_start 
 
 
-def write_output(task_names,full_df,first_chrom,args,mode='w',task_split_engaged=False,outf=None):
+def write_output(task_names,full_df,first_chrom,args,mode='w',task_split_engaged=False,outf=None,labels=False):
     '''
     Save genome-wide labels to disk in gzip, hdf5, or pkl format 
     '''
+    
     if (args.split_output_by_task==True) and (task_split_engaged==False) :
         for task in task_names:
             task_df=full_df[['CHR','START','END',task]]
-            write_output([task],task_df,first_chrom,args,mode=mode,task_split_engaged=True,outf=task.replace('/','.')+"."+args.outf)
+            cur_outf=add_filename_prefix(args.outf,task.replace('/','.'))
+            write_output([task],task_df,first_chrom,args,mode=mode,task_split_engaged=True,outf=cur_outf)
         return
     if outf==None:
-        outf=args.outf        
+        outf=args.outf
+    if labels==True:
+        outf=add_filename_prefix(outf,'label_source')
     all_negative_df=None
-    if args.store_positives_only==True:
+    if (args.store_positives_only==True) and (labels==False):
         #find regions with at least one positive entry per task
         all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]<=0).all(1)]
         full_df=full_df[(full_df[task_names]>0).any(1)]
-    if args.store_values_above_thresh is not None:
+    if (args.store_values_above_thresh is not None) and (labels==False):
         all_negative_df=full_df[['CHR','START','END']][(full_df[task_names]<=args.store_values_above_thresh).all(1)]
         full_df=full_df[(full_df[task_names]>args.store_values_above_thresh).any(1)]
         
@@ -322,6 +360,7 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['label_transformer']='asinh'
     vars(args_object)['label_transformer_pseudocount']=0.001
     vars(args_object)['temp_dir']='/tmp'
+    vars(args_object)['save_label_source']=False
     for key in args_dict:
         vars(args_object)[key]=args_dict[key]
     #set any defaults that are unset 
@@ -385,7 +424,7 @@ def genomewide_labels(args):
         exit()
     mode='w'
     first_chrom=True
-    for chrom, pickle_path in processed_chrom_outputs:
+    for chrom, pickle_path,chrom_label_source_df in processed_chrom_outputs:
         #write to output file!
         if pickle_path is None:
             continue
@@ -394,6 +433,8 @@ def genomewide_labels(args):
             chrom_df=pickle.load(f)
         print("writing output chromosomes:"+str(chrom))
         write_output(tasks['task'],chrom_df,first_chrom,args,mode=mode)
+        if chrom_label_source_df is not None:
+            write_output(tasks['task'],chrom_label_source_df,first_chrom,args,mode=mode,labels=True)
         #delete the temp file
         os.remove(pickle_path) 
         first_chrom=False
