@@ -9,8 +9,8 @@ import argparse
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
-from .attrib_config import *
-from .utils import *
+from ..attrib_config import *
+from ..utils import *
 from multiprocessing.pool import Pool, ThreadPool, get_context 
 import pdb
 import gc
@@ -136,7 +136,9 @@ def open_data_for_parsing(row,attribute_info):
 def get_subdict(full_dict,start,end):
     subdict=dict()
     for key in full_dict:
+        print("key:"+str(key))
         subdict[key]=full_dict[key][start:end]
+    print("done getting subdict")
     return subdict
 
 def parse_input_chunks(chrom,size,parser_chunk,data_dict,attribute_info,attribute,cur_parser,args):
@@ -265,7 +267,7 @@ def process_chrom(inputs):
             if cur_parser is parse_bigwig_chrom_vals:
                dict_to_write[attribute]=parse_input_chunks(chrom,size,batch_size,data_dict,attribute_info,attribute,cur_parser,args)
             else:
-                dict_to_write[attribute]=cur_parser(data_dict[attribute],chrom,0,size,attribute_info[attribute])
+                dict_to_write[attribute]=cur_parser([data_dict[attribute],chrom,0,size,attribute_info[attribute]])[-1]
             print("got:"+str(attribute)+" for chrom:"+str(chrom))
             compressor='gzip'
             compression_level=-1
@@ -288,7 +290,7 @@ def process_chrom(inputs):
             for attrib in required_attrib:
                 if attrib not in dict_to_write:
                     dict_to_write[attrib]=np.full(size,np.nan)
-        with tiledb.DenseArray(array_out_name,ctx=tdb_Context ,mode='w') as out_array:
+        with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config), mode='w') as out_array:
             if args.write_chunk is None:
                 #write the full chromosome 
                 out_array[:]=dict_to_write
@@ -296,8 +298,10 @@ def process_chrom(inputs):
                 #write in chunks
                 for chunk_index in range(0,size+args.write_chunk,args.write_chunk):
                     start_pos=chunk_index
+                    print("start_pos:"+str(start_pos))
                     if start_pos<size: 
                         end_pos=min([size,chunk_index+args.write_chunk])
+                        print("end_pos:"+str(end_pos)) 
                         out_array[start_pos:end_pos]=get_subdict(dict_to_write,start_pos,end_pos)
                         print("wrote:"+str(start_pos)+"-"+str(end_pos)+ " for:"+array_out_name)
             print("wrote to disk:"+array_out_name)

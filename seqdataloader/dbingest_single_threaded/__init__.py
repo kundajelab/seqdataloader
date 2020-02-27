@@ -12,8 +12,8 @@ import argparse
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
-from .attrib_config import *
-from .utils import *
+from ..attrib_config import *
+from ..utils import *
 import gc
 
 #config
@@ -48,7 +48,7 @@ def args_object_from_args_dict(args_dict):
     
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
-    parser.add_argument("--tiledb_metadata",help="fields are: dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, idr_peak, overlap_peak, ambig_peak")
+    parser.add_argument("--tiledb_metadata",help="fields are: dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, count_bigwig_unstranded_5p, idr_peak, overlap_peak, ambig_peak")
     parser.add_argument("--tiledb_group")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
@@ -123,6 +123,7 @@ def get_subdict(full_dict,start,end):
     subdict=dict()
     for key in full_dict:
         subdict[key]=full_dict[key][start:end]
+    print(subdict.keys())
     return subdict
     
 def ingest_single_threaded(args):
@@ -184,7 +185,8 @@ def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,ar
     
     for attribute in data_dict:
         cur_parser=attribute_info[attribute]['parser']
-        dict_to_write[attribute]=cur_parser(data_dict[attribute],chrom,0,size,attribute_info[attribute])
+        cur_vals=cur_parser([data_dict[attribute],chrom,0,size,attribute_info[attribute]])
+        dict_to_write[attribute]=cur_vals[-1] #the last entry in the tuple is the actual numpy array of values; the first entries store start and end blocks 
         print("got:"+str(attribute)+" for chrom:"+str(chrom))
 
     if updating is True:
@@ -215,6 +217,7 @@ def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,ar
                 start_pos=chunk_index
                 if start_pos<size: 
                     end_pos=min([size,chunk_index+args.write_chunk])
+                    #pdb.set_trace() 
                     out_array[start_pos:end_pos]=get_subdict(dict_to_write,start_pos,end_pos)
                     print("wrote:"+str(start_pos)+"-"+str(end_pos)+ " for:"+array_out_name)
     del out_array 
