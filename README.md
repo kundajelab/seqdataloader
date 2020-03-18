@@ -148,6 +148,7 @@ The input tsv file must have a subset of the columns corresponding to the suppor
 	** pval_bigwig
 	** count_bigwig_plus_5p
 	** count_bigwig_minus_5p
+	** count_bigwig_unstranded_5p
 	** idr_peak
 	** overlap_peak 
 	** ambig_peak 

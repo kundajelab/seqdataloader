@@ -20,6 +20,9 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
     ambiguous
     '''
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
+    task_bed=BedTool(task_bed)
+    if task_ambig is not None: 
+        task_ambig=BedTool(task_ambig)
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
@@ -36,13 +39,17 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
     #pre-allocate a numpy array of 0's
     num_bins=(final_bin_start-first_bin_start)//args.bin_stride+1
     coverage_vals=np.zeros(num_bins)
-
+    if args.save_label_source is True:
+        label_source_dict=dict()
+    else:
+        label_source_dict=None 
+                
     for entry in chrom_task_bed:
         chrom=entry[0]
         peak_start=int(entry[1])
         peak_end=int(entry[2])
         summit=peak_start+int(entry[-1])
-
+        
         chromosome_min_bin_index=ceil((summit-args.bin_size-first_bin_start)/args.bin_stride)
         min_bin_start=chromosome_min_bin_index*args.bin_stride
         chromosome_max_bin_index=floor((summit-first_bin_start)/args.bin_stride)
@@ -53,6 +60,11 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
             if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
                 coverage_vals[index_coverage_vals]=1
+                if args.save_label_source is True:
+                    label_source_dict[index_coverage_vals]={}
+                    label_source_dict[index_coverage_vals][task_name+".CHR"]=chrom
+                    label_source_dict[index_coverage_vals][task_name+".START"]=peak_start
+                    label_source_dict[index_coverage_vals][task_name+".END"]=peak_end
             index_coverage_vals+=1
 
         #if allow_ambiguous supplied by user, shift 1 bin left and 1 bin right
@@ -60,9 +72,13 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
             chromosome_min_bin_index-=1
             if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
                 coverage_vals[chromosome_min_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_min_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_min_bin_index]
             chromosome_max_bin_index+=1
             if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
                 coverage_vals[chromosome_max_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_max_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_max_bin_index]
                 
     #if a bed file of ambiguous labels is specified, label them with -1
     if ((args.allow_ambiguous==True) and (chrom_ambig_bed!=None)):
@@ -82,16 +98,23 @@ def peak_summit_in_bin_classification(task_name,task_bed,task_bigwig,task_ambig,
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
                     coverage_vals[index_coverage_vals]=np.nan
+                    if args.save_label_source is True:
+                        if index_coverage_vals in label_source_dict:
+                            del label_source_dict[index_coverage_vals]                                                                                    
                 index_coverage_vals+=1
+                
         
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,coverage_vals
+    return task_name,coverage_vals,label_source_dict
 
 def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,task_ambig,chrom,first_bin_start,final_bin_start,args):
     '''
     50% of the central 200bp region in a 1kb bin must overlap with the peak for a positive label
     '''
     #get the peaks for the current chromosome by intersecting the task_bed with the chromosome coordinates
+    task_bed=BedTool(task_bed)
+    if task_ambig is not None: 
+        task_ambig=BedTool(task_ambig)
     min_chrom_coord=first_bin_start
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
@@ -107,6 +130,11 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
     #pre-allocate a numpy array of 0's
     num_bins=(final_bin_start-first_bin_start)//args.bin_stride+1
     coverage_vals=np.zeros(num_bins)
+                    
+    if args.save_label_source is True:
+        label_source_dict=dict()
+    else:
+        label_source_dict=None 
 
     for entry in chrom_task_bed:
         chrom=entry[0]
@@ -125,6 +153,11 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
         for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
             if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
                 coverage_vals[index_coverage_vals]=1
+                if args.save_label_source is True:
+                    label_source_dict[index_coverage_vals]={}
+                    label_source_dict[index_coverage_vals][task_name+".CHR"]=chrom
+                    label_source_dict[index_coverage_vals][task_name+".START"]=peak_start
+                    label_source_dict[index_coverage_vals][task_name+".END"]=peak_end
                 index_coverage_vals+=1
 
         #if allow_ambiguous supplied by user, shift 1 bin left and 1 bin right
@@ -132,9 +165,16 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
             if chromosome_min_bin_index > 0 and chromosome_min_bin_index <= (num_bins - 1):
                 chromosome_min_bin_index-=1
                 coverage_vals[chromosome_min_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_min_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_min_bin_index]
+
             if chromosome_max_bin_index >= 0 and chromosome_max_bin_index < (num_bins - 1):
                 chromosome_max_bin_index+=1
                 coverage_vals[chromosome_max_bin_index]=np.nan
+                if (args.save_label_source is True) and (chromosome_max_bin_index in label_source_dict):
+                    del label_source_dict[chromosome_max_bin_index]
+
+                
     if ((args.allow_ambiguous==True) and (task_ambig!=None)):
         for entry in chrom_ambig_bed:
             chrom=entry[0]
@@ -153,7 +193,9 @@ def peak_percent_overlap_with_bin_classification(task_name,task_bed,task_bigwig,
             for bin_start in range(min_bin_start,max_bin_start+1,args.bin_stride):
                 if index_coverage_vals >= 0 and index_coverage_vals <= (num_bins - 1):
                     coverage_vals[index_coverage_vals]=np.nan
+                    if (args.save_label_source is True) and (index_coverage_vals in label_source_dict):
+                        del label_source_dict[index_coverage_vals]
                     index_coverage_vals+=1
         
     print("finished chromosome:"+str(chrom)+" for task:"+str(task_name))
-    return task_name,coverage_vals
+    return task_name, coverage_vals, label_source_dict
