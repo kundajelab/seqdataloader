@@ -14,30 +14,17 @@ import numpy as np
 from collections import OrderedDict
 from ..attrib_config import *
 from ..utils import *
+from ..tdb_config import * 
 import gc
 
-#config
-
-tdb_Config=tiledb.Config({"sm.check_coord_dups":"false",
-                          "sm.check_coord_oob":"false",
-                          "sm.check_global_order":"false",
-                          "sm.num_writer_threads":"50",
-                          "sm.num_reader_threads":"50",
-                          "sm.num_async_threads":"50",
-                          "vfs.num_threads":"50",
-                          "sm.memory_budget":"5000000000"})
-
-#tdb_Config=tiledb.Config({"sm.num_writer_threads":"20",
-#                          "sm.num_reader_threads":"20",
-#                          "sm.num_async_threads":"20"})
-tdb_Context=tiledb.Ctx(config=tdb_Config) 
     
 def args_object_from_args_dict(args_dict):
     #create an argparse.Namespace from the dictionary of inputs
     args_object=argparse.Namespace()
     #set the defaults
     vars(args_object)['overwrite']=False
-    vars(args_object)['tile_size']=90000
+    vars(args_object)['coord_tile_size']=10000
+    vars(args_boject)['task_tile_size']=1
     vars(args_object)['attribute_config']='encode_pipeline'
     vars(args_object)['write_chunk']=None
     for key in args_dict:
@@ -52,29 +39,38 @@ def parse_args():
     parser.add_argument("--tiledb_group")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
-    parser.add_argument("--tile_size",type=int,default=90000,help="tile size")
+    parser.add_argument("--coord_tile_size",type=int,default=10000,help="coordinate axis tile size")
+    parser.add_argument("--task_tile_size",type=int,default=1,help="task axis tile size")
     parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig")
     parser.add_argument("--write_chunk",type=int,default=None,help="number of bases to write to disk in one tileDB DenseArray write operation") 
     return parser.parse_args()
 
-def create_new_array(size,
+def create_new_array(tdb_Context,
+                     size,
                      array_out_name,
-                     tile_size,
+                     coord_tile_size,
+                     task_tile_size,
                      attribute_config,
                      compressor='gzip',
-                     compression_level=-1):
+                     compression_level=-1,
+                     var=False):
     '''
     Creates an empty tileDB array
+    size= tuple(num_indices,num_tasks)
     '''
-    
-    tile_size=min(size,tile_size)    
-    tiledb_dim = tiledb.Dim(
+    coord_tile_size=min(size[0],coord_tile_size)
+    task_tile_size=min(size[1],task_tile_size)
+    tiledb_dim_coords = tiledb.Dim(
         name='genome_coordinate',
-        domain=(0, size - 1),
-        tile=tile_size,
+        domain=(0, size[0]),
+        tile=coord_tile_size,
         dtype='uint32')
-    tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tdb_Context)
-    #tiledb_dom = tiledb.Domain(tiledb_dim,ctx=tiledb.Ctx(config=tdb_Config))
+    tiledb_dim_tasks=tiledb.Dim(
+        name='task',
+        domain=(0,size[1]),
+        tile=task_tile_size,
+        dtype='uint32')
+    tiledb_dom = tiledb.Domain(tiledb_dim_coords,tiledb_dim_tasks,ctx=tdb_Context)
 
     #generate the attribute information
     attribute_info=get_attribute_info(attribute_config)
@@ -82,8 +78,10 @@ def create_new_array(size,
     for key in attribute_info:
         attribs.append(tiledb.Attr(
             name=key,
+            var=var,
             filters=tiledb.FilterList([tiledb.GzipFilter()]),
             dtype=attribute_info[key]['dtype']))
+    
     tiledb_schema = tiledb.ArraySchema(
         domain=tiledb_dom,
         attrs=tuple(attribs),
@@ -129,73 +127,107 @@ def get_subdict(full_dict,start,end):
 def ingest_single_threaded(args):
     if type(args)==type({}):
         args=args_object_from_args_dict(args)
-        
+
+    #config
+    tdb_Config=tiledb.Config(tdb_config_params)
+    tdb_write_Context=tiledb.Ctx(config=tdb_Config)   
+    tdb_read_Context=tiledb.Ctx(config=tdb_Config)
+    
     overwrite=args.overwrite
-    tile_size=args.tile_size
+    coord_tile_size=args.coord_tile_size
+    task_tile_size=args.task_tile_size
     attribute_config=args.attribute_config
     updating=False
 
     attribute_info=get_attribute_info(args.attribute_config) 
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
-
+    num_tasks=tiledb_metadata.shape[0]
+    
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
     print("loaded chrom sizes")
-
-    #check if the tiledb_group exists, and if not, create it
-    if tiledb.object_type(args.tiledb_group) is not 'group':        
-        group_uri=tiledb.group_create(args.tiledb_group)
-        print("created tiledb group") 
+    chrom_indices,num_indices=transform_chrom_size_to_indices(chrom_sizes)
+    print("num_indices:"+str(num_indices))
+    array_out_name=args.tiledb_group
+    if tiledb.object_type(array_out_name) == "array":
+        if overwrite==False:
+            raise Exception("array:"+str(array_out_name) + "already exists; use the --overwrite flag to overwrite it. Exiting")
+        else:
+            print("warning: the array: "+str(array_out_name)+" already exists. You provided the --overwrite flag, so it will be updated/overwritten")
+            updating=True
     else:
-        group_uri=args.tiledb_group
-        print("tiledb group already exists")
-        
+        #create the array:
+        create_new_array(tdb_Context=tdb_write_Context,
+                         size=(num_indices,num_tasks),
+                         attribute_config=attribute_config,
+                         array_out_name=array_out_name,
+                         coord_tile_size=coord_tile_size,
+                         task_tile_size=task_tile_size,
+                         var=False)
+        print("created new array:"+str(array_out_name))
+        #create metadata array
+        metadata_dict={}
+        metadata_dict['tasks']=[i for i in tiledb_metadata['dataset']]
+        metadata_dict['chroms']=[i for i in chrom_indices.keys()]
+        metadata_dict['sizes']=[i[1] for i in list(chrom_indices.values())]
+        metadata_dict['offsets']=[i[0] for i in list(chrom_indices.values())]
+        num_tasks=tiledb_metadata['dataset'].shape[0]
+        num_chroms=len(chrom_indices.keys())
+        with tiledb.DenseArray(array_out_name,ctx=tdb_write_Context,mode='w') as cur_array:
+            cur_array.meta['num_tasks']=num_tasks
+            cur_array.meta['num_chroms']=num_chroms
+            for task_index in range(num_tasks):
+                cur_array.meta['_'.join(['task',str(task_index)])]=metadata_dict['tasks'][task_index]
+            for chrom_index in range(num_chroms):
+                cur_array.meta['_'.join(['chrom',str(chrom_index)])]=metadata_dict['chroms'][chrom_index]
+                cur_array.meta['_'.join(['size',str(chrom_index)])]=metadata_dict['sizes'][chrom_index]
+                cur_array.meta['_'.join(['offset',str(chrom_index)])]=metadata_dict['offsets'][chrom_index]                                
+        print("created tiledb metadata")
+    if updating is True:
+        cur_array_toread=tiledb.DenseArray(array_out_name,ctx=tdb_read_Context,mode='r')
+    else:
+        cur_array_toread=False    
+    cur_array_towrite=tiledb.DenseArray(array_out_name,ctx=tdb_write_Context,mode='w')
     for task_index,task_row in tiledb_metadata.iterrows():
-        dataset=task_row['dataset']    
+        dataset=task_row['dataset']
+        print(dataset) 
         #read in filenames for bigwigs
         data_dict=open_data_for_parsing(task_row,attribute_info)
-        array_outf_prefix="/".join([args.tiledb_group,dataset])
-        
-        for chrom_index, chrom_row in chrom_sizes.iterrows():
-            chrom=chrom_row[0]
-            size=chrom_row[1]
-            array_out_name='.'.join([array_outf_prefix,chrom])
-            
-            if tiledb.object_type(array_out_name) == "array":
-                if overwrite==False:
-                    raise Exception("array:"+str(array_out_name) + "already exists; use the --overwrite flag to overwrite it. Exiting")
-                else:
-                    print("warning: the array: "+str(array_out_name)+" already exists. You provided the --overwrite flag, so it will be updated/overwritten")
-                    updating=True
-            else:
-                #create the array:
-                create_new_array(size=size,
-                                 attribute_config=attribute_config,
-                                 array_out_name=array_out_name,
-                                 tile_size=tile_size)
-                
-                print("created new array:"+str(array_out_name))
-            print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))
-            process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,args)
-            print("wrote chrom array for task:"+str(dataset))
+        for start_chunk_index in range(0,num_indices,args.write_chunk):
+            print(str(start_chunk_index)+'/'+str(num_indices)) 
+            end_chunk_index=start_chunk_index+min([num_indices,start_chunk_index+args.write_chunk])
+            print("end chunk index:"+str(end_chunk_index))
+            #convert global indices to chrom+pos indices
+            chunk_chrom_coords=transform_indices_to_chrom_coords(start_chunk_index,end_chunk_index,chrom_indices)
+            print("processing:"+str(chunk_chrom_coords))
+            for coord_set in chunk_chrom_coords:
+                print("\t"+"coord_set:"+str(coord_set))
+                process_chunk(task_index,data_dict,attribute_info,coord_set,updating,args,cur_array_toread,cur_array_towrite)
+                print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))            
+                print("wrote chrom array for task:"+str(dataset)+"for index:"+str(start_chunk_index))
+    print("closing arrays")
+    cur_array_toread.close()
+    cur_array_towrite.close()
+    print('done!') 
 
-def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,args):
+def process_chunk(task_index, data_dict, attribute_info, coord_set, updating, args, cur_array_toread, cur_array_towrite):
     attribute_config=args.attribute_config
     dict_to_write=OrderedDict()
-    
+    chrom=coord_set[0]
+    start_pos=coord_set[1]
+    end_pos=coord_set[2]
+    start_index=coord_set[3]
+    end_index=coord_set[4] 
     for attribute in data_dict:
         cur_parser=attribute_info[attribute]['parser']
-        cur_vals=cur_parser([data_dict[attribute],chrom,0,size,attribute_info[attribute]])
+        cur_vals=cur_parser([data_dict[attribute],chrom,start_pos,end_pos,attribute_info[attribute]])
         dict_to_write[attribute]=cur_vals[-1] #the last entry in the tuple is the actual numpy array of values; the first entries store start and end blocks 
-        print("got:"+str(attribute)+" for chrom:"+str(chrom))
+        print("got:"+str(attribute)+" for task "+str(task_index)+" for "+str(chrom)+":"+str(start_pos)+"-"+str(end_pos))
 
     if updating is True:
         #we are only updating some attributes in the array
-        with tiledb.DenseArray(array_out_name,mode='r',ctx=tdb_Context) as cur_array:
-        #with tiledb.DenseArray(array_out_name,mode='r',ctx=tiledb.Ctx(config=tdb_Config)) as cur_array:
-            cur_vals=cur_array[:]            
-        del cur_array
-        print('got cur vals for'+array_out_name) 
+        cur_vals=cur_array_toread[start_index:end_index,task_index]            
+        print("got cur vals for task "+str(task_index)+" for "+str(chrom)+":"+str(start_pos)+"-"+str(end_pos))
         for key in dict_to_write:
             cur_vals[key]=dict_to_write[key]
         dict_to_write=cur_vals
@@ -205,24 +237,12 @@ def process_chrom(data_dict,attribute_info,chrom,size,array_out_name,updating,ar
         required_attrib=list(get_attribute_info(attribute_config).keys())
         for attrib in required_attrib:
             if attrib not in dict_to_write:
-                dict_to_write[attrib]=np.full(size,np.nan)
-    with tiledb.DenseArray(array_out_name,ctx=tdb_Context,mode='w') as out_array:
-    #with tiledb.DenseArray(array_out_name,ctx=tiledb.Ctx(config=tdb_Config),mode='w') as out_array:
-        if args.write_chunk is None:
-            #write the full chromosome 
-            out_array[:]=dict_to_write
-        else:
-            #write in chunks
-            for chunk_index in range(0,size+args.write_chunk,args.write_chunk):
-                start_pos=chunk_index
-                if start_pos<size: 
-                    end_pos=min([size,chunk_index+args.write_chunk])
-                    #pdb.set_trace() 
-                    out_array[start_pos:end_pos]=get_subdict(dict_to_write,start_pos,end_pos)
-                    print("wrote:"+str(start_pos)+"-"+str(end_pos)+ " for:"+array_out_name)
-    del out_array 
+                dict_to_write[attrib]=np.full(end_pos-start_pos,np.nan)
+            
+    #write in chunks
+    cur_array_towrite[start_index:end_index,task_index]=dict_to_write
+    print("wrote to disk "+str(task_index)+" for "+str(chrom)+":"+str(start_pos)+"-"+str(end_pos))
     gc.collect() 
-    print("wrote to disk:"+array_out_name)
     
 def main():
     args=parse_args()
