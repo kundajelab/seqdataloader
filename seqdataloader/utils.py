@@ -58,7 +58,6 @@ def parse_narrowPeak_chrom_vals(entry):
     chrom_coords=chrom+'\t'+str(start)+'\t'+str(end)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     cur_bed=task_bed.intersect(chrom_bed)
-
     cur_attribute_info=entry[4] 
     store_summits=None
     summit_indicator=None
@@ -75,16 +74,14 @@ def parse_narrowPeak_chrom_vals(entry):
         entry_start=int(entry[1])-start
         entry_end=int(entry[2])-start
         signal_data[entry_start:entry_end]=1
-        if (warned==False) and (store_summits==True) and (len(entry)<10):
-            print("warning! dataset does not have 10 columns of the standard narrowPeak format, falling back to peak centers")
-            warned=True
         #add in summits in a separate step to avoid overwriting them with "1's" for overlaping peak coordinates;
         #The overwriting issue is particularly relevant for pseudobulk data. 
         if store_summits is True:
-            if len(entry)<10:
-                summit_pos=int(entry_start+(entry_end-entry_start)*0.5)
-            else: 
+            try:
                 summit_pos=entry_start+int(entry[-1])
+            except:
+                print("warning! could not add summit position from last column of narrowPeak file, falling back to peak center")
+                summit_pos=int(entry_start+(entry_end-entry_start)*0.5)                
             if summit_pos < entry_end:
                 if summit_pos > entry_start: 
                     summits.append(summit_pos)

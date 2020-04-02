@@ -82,7 +82,7 @@ def create_new_array(tdb_Context,
     size= tuple(num_indices,num_tasks)
     '''
     coord_tile_size=min(size[0],coord_tile_size)
-    task_tile_size=min(size[1],task_tile_size)
+    task_tile_size=max([1,min(size[1],task_tile_size)])
     tiledb_dim_coords = tiledb.Dim(
         name='genome_coordinate',
         domain=(0, size[0]),
@@ -90,7 +90,7 @@ def create_new_array(tdb_Context,
         dtype='uint32')
     tiledb_dim_tasks=tiledb.Dim(
         name='task',
-        domain=(0,size[1]),
+        domain=(0,max([1,size[1]])),
         tile=task_tile_size,
         dtype='uint32')
     tiledb_dom = tiledb.Domain(tiledb_dim_coords,tiledb_dim_tasks,ctx=tdb_Context)
