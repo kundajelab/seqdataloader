@@ -31,7 +31,6 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['attribute_config']='encode_pipeline'
     vars(args_object)['write_chunk']=30000000
     vars(args_object)['threads']=1
-    vars(args_object)['tmp_folder']='.'
     vars(args_object)['max_queue_size']=30
     vars(args_object)['max_mem_g']=100
     for key in args_dict:
@@ -51,7 +50,6 @@ def parse_args():
     parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig")
     parser.add_argument("--write_chunk",type=int,default=30000000,help="number of bases to write to disk in one tileDB DenseArray write operation")
     parser.add_argument("--threads",type=int,default=1,help="number of chunks to process in parallel")
-    parser.add_argument("--tmp_folder",default='.',help="folder to store temporary files")
     parser.add_argument("--max_queue_size",type=int,default=30)
     parser.add_argument("--max_mem_g",type=int,default=100,help="maximum memory usage in Gigabytes")
     return parser.parse_args()
@@ -213,6 +211,7 @@ def ingest(args):
                 cur_array.meta['_'.join(['offset',str(chrom_index)])]=metadata_dict['offsets'][chrom_index]                                
         print("created tiledb metadata")
     pool=Pool(processes=args.threads,initializer=init_worker)
+    print("made pool") 
     pool_inputs=[] 
     for task_index,task_row in tiledb_metadata.iterrows():
         dataset=task_row['dataset']
@@ -229,7 +228,6 @@ def ingest(args):
     pool_feed_chunk_start=0
     pool_feed_chunk_max=len(pool_inputs)
     chunks_to_process=len(pool_inputs)
-    
     array_writer=Process(target=write_array,args=([args,updating,chunks_to_process]))
     try:
         array_writer.start()
@@ -242,8 +240,8 @@ def ingest(args):
             #only do mapping if queue size is not exceeded & total memory consumption is not exceeded
             write_queue_size=write_queue.qsize()
             mem_used=psutil.virtual_memory().used / (10**9)
-            #print("mapping to pool, queue size:"+str(write_queue_size))
-            #print("mapping to pool, mem used:"+str(mem_used))
+            print("mapping to pool, queue size:"+str(write_queue_size))
+            print("mapping to pool, mem used:"+str(mem_used))
             while (write_queue_size >=args.max_queue_size) or (mem_used >=args.max_mem_g):
                 time.sleep(10)
             print("sending to pool:"+str(pool_feed_chunk_start)+"-"+str(pool_feed_chunk_end)+"/"+str(chunks_to_process))
@@ -334,9 +332,7 @@ def write_array(args, updating, chunks_to_process):
                         print("augmenting")
                         dict_to_write[attrib]=np.full(end_index-start_index,np.nan)
             #write in chunks
-            #print('starting array write')
             cur_array_towrite[start_index:end_index,task_index]=dict_to_write
-            #clean_queue.put(args.tmp_folder+'/'+'.'.join([str(i) for i in [task_index,start_index,end_index,'pickle']]))
             print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))
             gc.collect()
             chunks_processed+=1
