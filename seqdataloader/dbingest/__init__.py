@@ -98,6 +98,7 @@ def create_new_array(tdb_Context,
     tiledb_dom = tiledb.Domain(tiledb_dim_coords,tiledb_dim_tasks,ctx=tdb_Context)
 
     #generate the attribute information
+    print("attribute_config:"+attribute_config) 
     attribute_info=get_attribute_info(attribute_config)
     attribs=[]
     for key in attribute_info:
@@ -165,7 +166,8 @@ def ingest(args):
     attribute_config=args.attribute_config
     updating=False
 
-    attribute_info=get_attribute_info(args.attribute_config) 
+    attribute_info=get_attribute_info(args.attribute_config)
+    print(attribute_info)
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
     num_tasks=tiledb_metadata.shape[0]
     
