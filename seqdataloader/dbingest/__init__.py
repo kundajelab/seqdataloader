@@ -184,7 +184,7 @@ def ingest(args):
     else:
         #create the array:
         create_new_array(tdb_Context=tdb_write_Context,
-                         size=(num_indices,num_tasks),
+                         size=(num_indices,num_tasks-1),
                          attribute_config=attribute_config,
                          array_out_name=array_out_name,
                          coord_tile_size=coord_tile_size,
@@ -195,9 +195,10 @@ def ingest(args):
         metadata_dict={}
         metadata_dict['tasks']=[i for i in tiledb_metadata['dataset']]
         metadata_dict['chroms']=[i for i in chrom_indices.keys()]
-        metadata_dict['sizes']=[i[1] for i in list(chrom_indices.values())]
+        metadata_dict['sizes']=[i[2] for i in list(chrom_indices.values())]
         metadata_dict['offsets']=[i[0] for i in list(chrom_indices.values())]
         num_tasks=tiledb_metadata['dataset'].shape[0]
+        
         num_chroms=len(chrom_indices.keys())
         with tiledb.DenseArray(array_out_name,ctx=tdb_write_Context,mode='w') as cur_array:
             cur_array.meta['num_tasks']=num_tasks
@@ -209,7 +210,6 @@ def ingest(args):
                 cur_array.meta['_'.join(['size',str(chrom_index)])]=metadata_dict['sizes'][chrom_index]
                 cur_array.meta['_'.join(['offset',str(chrom_index)])]=metadata_dict['offsets'][chrom_index]                                
         print("created tiledb metadata")
-
     pool=Pool(processes=args.threads,initializer=init_worker)
     pool_inputs=[] 
     for task_index,task_row in tiledb_metadata.iterrows():

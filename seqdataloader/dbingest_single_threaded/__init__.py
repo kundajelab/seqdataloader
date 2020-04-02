@@ -169,7 +169,7 @@ def ingest_single_threaded(args):
         metadata_dict={}
         metadata_dict['tasks']=[i for i in tiledb_metadata['dataset']]
         metadata_dict['chroms']=[i for i in chrom_indices.keys()]
-        metadata_dict['sizes']=[i[1] for i in list(chrom_indices.values())]
+        metadata_dict['sizes']=[i[2] for i in list(chrom_indices.values())]
         metadata_dict['offsets']=[i[0] for i in list(chrom_indices.values())]
         num_tasks=tiledb_metadata['dataset'].shape[0]
         num_chroms=len(chrom_indices.keys())
@@ -186,7 +186,7 @@ def ingest_single_threaded(args):
     if updating is True:
         cur_array_toread=tiledb.DenseArray(array_out_name,ctx=tdb_read_Context,mode='r')
     else:
-        cur_array_toread=False    
+        cur_array_toread=None
     cur_array_towrite=tiledb.DenseArray(array_out_name,ctx=tdb_write_Context,mode='w')
     for task_index,task_row in tiledb_metadata.iterrows():
         dataset=task_row['dataset']
@@ -206,7 +206,8 @@ def ingest_single_threaded(args):
                 print('Gigs:', round(psutil.virtual_memory().used / (10**9), 2))            
                 print("wrote chrom array for task:"+str(dataset)+"for index:"+str(start_chunk_index))
     print("closing arrays")
-    cur_array_toread.close()
+    if cur_array_to_read is not None:
+        cur_array_toread.close()
     cur_array_towrite.close()
     print('done!') 
 
