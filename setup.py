@@ -12,7 +12,8 @@ config = {
     'scripts': [],
     'entry_points': {'console_scripts': ['genomewide_labels=seqdataloader.labelgen.__init__:main',
                                          'db_ingest=seqdataloader.dbingest.__init__:main',
-                                         'db_ingest_single_threaded=seqdataloader.dbingest_single_threaded.__init__:main']},
+                                         'db_ingest_single_threaded=seqdataloader.dbingest_single_threaded.__init__:main',
+                                         'seqdataloader_get_outliers=seqdataloader.helpers.get_outliers:main']},
     'name': 'seqdataloader'
 }
 
