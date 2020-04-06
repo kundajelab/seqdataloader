@@ -1,7 +1,7 @@
 from .utils import *
 
 def get_multi_peak():
-    required_attribs=['count_bigwig_plus_5p','count_bigwig_minus_5p','count_bigwig_unstranded_5p','100bp_peak','200bp_peak','500bp_peak']
+    required_attribs=['count_bigwig_plus_5p','count_bigwig_minus_5p','count_bigwig_unstranded_5p','100bp_peak','200bp_peak','500bp_peak','ambig_peak']
     attrib_info={}
     attrib_info['count_bigwig_plus_5p']={'dtype':'float32',
                                          'opener':open_bigwig_for_parsing,
@@ -17,20 +17,28 @@ def get_multi_peak():
                                                'parser':parse_bigwig_chrom_vals,
                                                'store_summits':False}
     attrib_info['100bp_peak']={'dtype':'int',
-                             'opener':open_csv_for_parsing,
-                             'parser':parse_narrowPeak_chrom_vals,
-                             'store_summits':True,
-                             'summit_indicator':2}
+                               'opener':open_csv_for_parsing,
+                               'parser':parse_narrowPeak_chrom_vals,
+                               'store_summits':True,
+                               'summit_indicator':2,
+                               'summit_from_peak_center':True}
     attrib_info['200bp_peak']={'dtype':'int',
-                             'opener':open_csv_for_parsing,
-                             'parser':parse_narrowPeak_chrom_vals,
-                             'store_summits':True,
-                             'summit_indicator':2}
+                               'opener':open_csv_for_parsing,
+                               'parser':parse_narrowPeak_chrom_vals,
+                               'store_summits':True,
+                               'summit_indicator':2,
+                               'summit_from_peak_center':True}
     attrib_info['500bp_peak']={'dtype':'int',
-                             'opener':open_csv_for_parsing,
-                             'parser':parse_narrowPeak_chrom_vals,
-                             'store_summits':True,
-                             'summit_indicator':2}
+                               'opener':open_csv_for_parsing,
+                               'parser':parse_narrowPeak_chrom_vals,
+                               'store_summits':True,
+                               'summit_indicator':2,
+                               'summit_from_peak_center':True}
+    attrib_info['ambig_peak']={'dtype':'int',
+                               'opener':open_csv_for_parsing,
+                               'parser':parse_narrowPeak_chrom_vals,
+                               'store_summits':False,
+                               'summit_from_peak_center':False}
 
     return attrib_info
 
@@ -77,19 +85,22 @@ def get_encode_config():
                              'opener':open_csv_for_parsing,
                              'parser':parse_narrowPeak_chrom_vals,
                              'store_summits':True,
-                             'summit_indicator':2}
+                             'summit_indicator':2,
+                             'summit_from_peak_center':False}
 
     
     attrib_info['overlap_peak']={'dtype':'int',
                                  'opener':open_csv_for_parsing,
                                  'parser':parse_narrowPeak_chrom_vals,
                                  'store_summits':True,
-                                 'summit_indicator':2}
+                                 'summit_indicator':2,
+                                 'summit_from_peak_center':False}
     
     attrib_info['ambig_peak']={'dtype':'int',
                                'opener':open_csv_for_parsing,
                                'parser':parse_narrowPeak_chrom_vals,
-                               'store_summits':False}
+                               'store_summits':False,
+                               'summit_from_peak_center':False}
     return attrib_info 
 
 def get_attribute_info(attribute_config):

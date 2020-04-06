@@ -26,12 +26,6 @@ def parse_bigwig_chrom_vals(entry):
     start=entry[2]
     end=entry[3]
     cur_attribute_info=entry[4]
-    store_summits=None
-    summit_indicator=None
-    if 'store_summits' in cur_attribute_info:
-        store_summits=cur_attribute_info['store_summits']
-    if 'summit_indicator' in cur_attribute_info:
-        summit_indicator=cur_attribute_info['summit_indicator']
     
     #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0.
     bw_chroms=bigwig_object.chroms().keys()
@@ -58,14 +52,15 @@ def parse_narrowPeak_chrom_vals(entry):
     chrom_coords=chrom+'\t'+str(start)+'\t'+str(end)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     cur_bed=task_bed.intersect(chrom_bed)
-    cur_attribute_info=entry[4] 
+    cur_attribute_info=entry[4]
     store_summits=None
     summit_indicator=None
+    summit_from_peak_center=None
     if 'store_summits' in cur_attribute_info:
         store_summits=cur_attribute_info['store_summits']
-    if 'summit_indicator' in cur_attribute_info:
-        summit_indicator=cur_attribute_info['summit_indicator']
-
+        if store_summits is True:
+            summit_from_peak_center=cur_attribute_info['summit_from_peak_center'] 
+            summit_indicator=cur_attribute_info['summit_indicator']
     signal_data = np.zeros(num_entries, dtype=np.int)
     warned=False
     summits=[]
@@ -77,18 +72,21 @@ def parse_narrowPeak_chrom_vals(entry):
         #add in summits in a separate step to avoid overwriting them with "1's" for overlaping peak coordinates;
         #The overwriting issue is particularly relevant for pseudobulk data. 
         if store_summits is True:
-            try:
-                summit_pos=entry_start+int(entry[-1])
-            except:
-                print("warning! could not add summit position from last column of narrowPeak file, falling back to peak center")
-                summit_pos=int(entry_start+(entry_end-entry_start)*0.5)                
-            if summit_pos < entry_end:
-                if summit_pos > entry_start: 
-                    summits.append(summit_pos)
+            if summit_from_peak_center is True:
+                summit_pos=int(entry_start+(entry_end-entry_start)*0.5)
+            else:
+                try:
+                    summit_pos=entry_start+int(entry[-1])
+                except:
+                    print("WARNING: could not add summit position from last column of narrowPeak file, falling back to peak center"+str(entry))
+                    summit_pos=int(entry_start+(entry_end-entry_start)*0.5)                
+            if (summit_pos < entry_end) and (summit_pos > entry_start):
+                summits.append(summit_pos)
+            else:
+                print("WARNING: summit position outside peak region position,skipping:"+str(entry))                    
     if store_summits is True:
         signal_data[summits]=summit_indicator
     return start, end, signal_data 
-
     
 def chunkify(iterable,chunk):
     it=iter(iterable)
