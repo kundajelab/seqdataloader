@@ -90,7 +90,7 @@ def create_new_array(tdb_Context,
         dtype='uint32')
     tiledb_dim_tasks=tiledb.Dim(
         name='task',
-        domain=(0,max([1,size[1]])),
+        domain=(0,size[1]),#max([1,size[1]])),
         tile=task_tile_size,
         dtype='uint32')
     tiledb_dom = tiledb.Domain(tiledb_dim_coords,tiledb_dim_tasks,ctx=tdb_Context)
@@ -168,6 +168,7 @@ def ingest(args):
     print(attribute_info)
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
     num_tasks=tiledb_metadata.shape[0]
+    print("num_tasks:"+str(num_tasks))
     
     print("loaded tiledb metadata")
     chrom_sizes=pd.read_csv(args.chrom_sizes,header=None,sep='\t')
