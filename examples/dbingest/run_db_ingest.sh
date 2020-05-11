@@ -1,6 +1,4 @@
 #!/bin/bash
-#rm -r db/dnase
-
 db_ingest --tiledb_metadata tier1.encode.dnase.tasks.tsv \
 	  --array_name db/dnase \
 	  --overwrite \
