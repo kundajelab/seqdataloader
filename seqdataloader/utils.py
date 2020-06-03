@@ -21,12 +21,11 @@ def open_csv_for_parsing(fname,parallel=False):
 def parse_bigwig_chrom_vals(entry):
     bigwig_object=entry[0]
     if type(bigwig_object)==str:
-        bigwig_object=pyBigWig.open(bigwig_object) 
+        bigwig_object=pyBigWig.open(bigwig_object)
     chrom=entry[1]
     start=entry[2]
     end=entry[3]
     cur_attribute_info=entry[4]
-    
     #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0.
     bw_chroms=bigwig_object.chroms().keys()
     if chrom not in bw_chroms:

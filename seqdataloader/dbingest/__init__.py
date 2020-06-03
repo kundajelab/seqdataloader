@@ -28,7 +28,8 @@ def args_object_from_args_dict(args_dict):
     vars(args_object)['overwrite']=False
     vars(args_object)['coord_tile_size']=10000
     vars(args_boject)['task_tile_size']=1
-    vars(args_object)['attribute_config']='encode_pipeline'
+    vars(args_object)['attribute_config']=None
+    vars(args_object)['attribute_config_file']=None
     vars(args_object)['write_chunk']=30000000
     vars(args_object)['threads']=1
     vars(args_object)['max_queue_size']=30
@@ -47,7 +48,8 @@ def parse_args():
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
     parser.add_argument("--coord_tile_size",type=int,default=10000,help="coordinate axis tile size")
     parser.add_argument("--task_tile_size",type=int,default=1,help="task axis tile size")
-    parser.add_argument("--attribute_config",default='encode_pipeline',help="the following are supported: encode_pipeline, generic_bigwig")
+    parser.add_argument("--attribute_config",default=None,help="the following are supported: encode_pipeline, encode_pipeline_with_controls, generic_bigwig")
+    parser.add_argument("--attribute_config_file",default=None,help="file with 2 columns; first column indicates attribute name; 2nd column indicates attribute type, which is one of bigwig, bed_no_summit, bed_summit_from_peak_center, bed_summit_from_last_col")
     parser.add_argument("--write_chunk",type=int,default=30000000,help="number of bases to write to disk in one tileDB DenseArray write operation")
     parser.add_argument("--threads",type=int,default=1,help="number of chunks to process in parallel")
     parser.add_argument("--max_queue_size",type=int,default=30)
@@ -74,6 +76,7 @@ def create_new_array(tdb_Context,
                      coord_tile_size,
                      task_tile_size,
                      attribute_config,
+                     attribute_config_file,
                      compressor='gzip',
                      compression_level=-1,
                      var=False):
@@ -96,8 +99,7 @@ def create_new_array(tdb_Context,
     tiledb_dom = tiledb.Domain(tiledb_dim_coords,tiledb_dim_tasks,ctx=tdb_Context)
 
     #generate the attribute information
-    print("attribute_config:"+attribute_config) 
-    attribute_info=get_attribute_info(attribute_config)
+    attribute_info=get_attribute_info(attribute_config,attribute_config_file)
     attribs=[]
     for key in attribute_info:
         attribs.append(tiledb.Attr(
@@ -162,10 +164,11 @@ def ingest(args):
     coord_tile_size=args.coord_tile_size
     task_tile_size=args.task_tile_size
     attribute_config=args.attribute_config
+    attribute_config_file=args.attribute_config_file
     updating=False
 
-    attribute_info=get_attribute_info(args.attribute_config)
-    print(attribute_info)
+    attribute_info=get_attribute_info(args.attribute_config,args.attribute_config_file)
+    #print(attribute_info)
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
     num_tasks=tiledb_metadata.shape[0]
     print("num_tasks:"+str(num_tasks))
@@ -187,6 +190,7 @@ def ingest(args):
         create_new_array(tdb_Context=tdb_write_Context,
                          size=(num_indices,num_tasks-1),
                          attribute_config=attribute_config,
+                         attribute_config_file=attribute_config_file,
                          array_out_name=array_out_name,
                          coord_tile_size=coord_tile_size,
                          task_tile_size=task_tile_size,
@@ -282,6 +286,7 @@ def process_chunk(inputs):
         start_index=coord_set[3]
         end_index=coord_set[4] 
         for attribute in data_dict:
+            #print(attribute)
             cur_parser=attribute_info[attribute]['parser']
             cur_vals=cur_parser([data_dict[attribute],chrom,start_pos,end_pos,attribute_info[attribute]])
             dict_to_write[attribute]=cur_vals[-1] #the last entry in the tuple is the actual numpy array of values; the first entries store start and end blocks
@@ -326,7 +331,7 @@ def write_array(args, updating, chunks_to_process):
                 print("updated data dict for writing:"+args.array_name) 
             else:
                 #we are writing for the first time, make sure all attributes are provided, if some are not, use a nan array
-                required_attrib=list(get_attribute_info(args.attribute_config).keys())
+                required_attrib=list(get_attribute_info(args.attribute_config,args.attribute_config_file).keys())
                 #print(str(required_attrib))
                 for attrib in required_attrib:
                     if attrib not in dict_to_write:
