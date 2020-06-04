@@ -18,7 +18,8 @@ allowed_attributes['bed_summit_from_peak_center']={'dtype':'int',
 allowed_attributes['bed_summit_from_last_col']={'dtype':'int',
                                'opener':open_csv_for_parsing,
                                'parser':parse_narrowPeak_chrom_vals,
-                               'store_summits':False,
+                               'store_summits':True,
+                               'summit_indicator':2,
                                'summit_from_peak_center':False}
 
 def get_generic_bigwig_config():
