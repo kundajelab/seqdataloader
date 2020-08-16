@@ -29,7 +29,7 @@ def parse_bigwig_chrom_vals(entry):
     #note: pybigwig uses NA in place of 0 where there are no reads, replace with 0.
     bw_chroms=bigwig_object.chroms().keys()
     if chrom not in bw_chroms:
-        print("WARNING: chromosome:"+str(chrom)+ " was not found in the bigwig file:"+str(bigwig_name))
+        print("WARNING: chromosome:"+str(chrom)+ " was not found in the bigwig file:"+str(bigwig_object))
         size=(end-start+1)
         signal_data=np.full(size,np.nan)
     else: 
