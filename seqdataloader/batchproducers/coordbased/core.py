@@ -26,6 +26,16 @@ class KerasBatchGenerator(keras.utils.Sequence):
         targets_coordstovals (CoordsToVals)
         sampleweights_coordstovals (CoordsToVals)
         coordsbatch_transformer (AbstracCoordBatchTransformer)
+        qc_func (callable): function that can be used to filter
+            out poor-quality sequences.
+        sampleweights_coordstoval: either this argument or
+            sampleweights_from_inputstargets could be used to
+            specify sample weights. sampleweights_coordstoval
+            takes a batch of coords as inputs.
+        sampleweights_from_inputstargets: either this argument or
+            sampleweights_coordstoval could be used to
+            specify sample weights. sampleweights_from_inputstargets
+            takes the inputs and targets values to generate the weights.
     """
     def __init__(self, coordsbatch_producer,
                        inputs_coordstovals,
