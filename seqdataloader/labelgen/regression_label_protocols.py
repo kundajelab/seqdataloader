@@ -265,7 +265,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
                     norm_bin_means[index_coverage_vals]=np.nan
                 index_coverage_vals+=1
 
-                
+    label_source_dict=None
     if args.save_label_source is True:
         assert task_bed is not None
         print("getting source peaks for genome bins")
