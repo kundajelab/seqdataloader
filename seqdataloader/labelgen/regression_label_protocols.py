@@ -43,7 +43,7 @@ def peak_summit_in_bin_regression(task_name,task_bed,task_bigwig,task_ambig,chro
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
         print("the chromosome"+chrom+" is too short for the specified settings of --left_flank, --right_flank, --bin_size, skipping")
-        return task_name, None
+        return task_name, None, None
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
@@ -134,7 +134,7 @@ def peak_percent_overlap_with_bin_regression(task_name,task_bed,task_bigwig,task
     max_chrom_coord=final_bin_start
     if min_chrom_coord >= max_chrom_coord:
         print("the chromosome"+chrom+" is too short for the specified settings of --left_flank, --right_flank, --bin_size, skipping")
-        return task_name,None
+        return task_name,None,None
     chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
     chrom_bed=BedTool(chrom_coords,from_string=True)
     chrom_task_bed=task_bed.intersect(chrom_bed)
@@ -225,7 +225,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
         values=task_bigwig.values(chrom,first_bin_start,final_bin_start+args.bin_size,numpy=True)
     except:
         print("Warning! Chromosome:"+str(chrom)+" appears not to be present in the bigWig file for task:"+task_name)
-        return task_name,None
+        return task_name,None,None
     #replace nan values with 0 
     values=np.nan_to_num(values) 
     #reshape the values such that number of columns is equal to the bin_stride 
@@ -244,7 +244,7 @@ def all_genome_bins_regression(task_name,task_bed,task_bigwig,task_ambig,chrom,f
         max_chrom_coord=final_bin_start
         if min_chrom_coord >= max_chrom_coord:
             print("the chromosome"+chrom+" is too short for the specified settings of --left_flank, --right_flank, --bin_size, skipping")
-            return task_name,None
+            return task_name,None,None
         chrom_coords=chrom+'\t'+str(min_chrom_coord)+'\t'+str(max_chrom_coord)
         chrom_bed=BedTool(chrom_coords,from_string=True)
         chrom_ambig_bed=task_ambig.intersect(chrom_bed)

@@ -123,7 +123,7 @@ def get_chrom_labels(inputs):
     try:
         chroms,all_start_pos,all_end_pos,first_bin_start,final_bin_start=get_indices(chrom,chrom_size,args)
     except:
-        return (chrom,None)
+        return (chrom,None,None)
     columns=['CHR','START','END']+list(tasks['task'])
     num_entries=len(chroms.values)
     chrom_df = pd.DataFrame(0,index=np.arange(num_entries),columns=columns)
@@ -194,7 +194,7 @@ def get_chrom_labels(inputs):
             elif args.output_type=="hdf5":
                 chrom_label_source_df=chrom_label_source_df.set_index(['CHR','START','END'])
                 chrom_label_source_df.to_hdf(outf_labels,key='data',mode='w',append=True,format='table',min_itemsize=30)                
-        return (chrom, None)
+        return (chrom, None, None)
     else:        
         #dump to tmp file -- needed to avoid passing very large objects between processes
         pickle_name=randomString()
