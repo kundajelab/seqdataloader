@@ -174,7 +174,6 @@ def ingest(args):
     updating=False
 
     attribute_info=get_attribute_info(args.attribute_config,args.attribute_config_file)
-    #print(attribute_info)
     tiledb_metadata=pd.read_csv(args.tiledb_metadata,header=0,sep='\t')
     num_tasks=tiledb_metadata.shape[0]
     print("num_tasks:"+str(num_tasks))
@@ -292,7 +291,6 @@ def process_chunk(inputs):
         start_index=coord_set[3]
         end_index=coord_set[4] 
         for attribute in data_dict:
-            print(attribute)
             cur_parser=attribute_info[attribute]['parser']
             cur_vals=cur_parser([data_dict[attribute],chrom,start_pos,end_pos,attribute_info[attribute]])
             dict_to_write[attribute]=cur_vals[-1] #the last entry in the tuple is the actual numpy array of values; the first entries store start and end blocks
