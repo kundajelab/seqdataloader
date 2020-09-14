@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import math
 import psutil
 from multiprocessing import Pool, Process, Queue
 import os
@@ -42,7 +43,7 @@ def args_object_from_args_dict(args_dict):
     
 def parse_args():
     parser=argparse.ArgumentParser(description="ingest data into tileDB")
-    parser.add_argument("--tiledb_metadata",help="fields are: dataset, fc_bigwig, pval_bigwig, count_bigwig_plus_5p, count_bigwig_minus_5p, count_bigwig_unstranded_5p, idr_peak, overlap_peak, ambig_peak")
+    parser.add_argument("--tiledb_metadata",help="each row is a dataset, each column corresponds to an attribute")
     parser.add_argument("--array_name")
     parser.add_argument("--overwrite",default=False,action="store_true") 
     parser.add_argument("--chrom_sizes",help="2 column tsv-separated file. Column 1 = chromsome name; Column 2 = chromosome size")
@@ -136,8 +137,13 @@ def open_data_for_parsing(row,attribute_info):
             cols.remove('dataset')
         for col in cols:
             cur_fname=extract_metadata_field(row,col)
-            if cur_fname is not None:
-                data_dict[col]=attribute_info[col]['opener'](cur_fname,parallel=True)
+            if isinstance(cur_fname,str):
+                assert os.path.exists(cur_fname), "The path:"+str(cur_fname)+" does not exist. If you meant to skip this column, leave it empty in the metadata sheet." 
+            elif math.isnan(float(cur_fname)):
+                continue
+            elif cur_fname is  None:
+                continue
+            data_dict[col]=attribute_info[col]['opener'](cur_fname,parallel=True)
         return data_dict
     except Exception as e:
         print(repr(e))
@@ -286,16 +292,12 @@ def process_chunk(inputs):
         start_index=coord_set[3]
         end_index=coord_set[4] 
         for attribute in data_dict:
-            #print(attribute)
+            print(attribute)
             cur_parser=attribute_info[attribute]['parser']
             cur_vals=cur_parser([data_dict[attribute],chrom,start_pos,end_pos,attribute_info[attribute]])
             dict_to_write[attribute]=cur_vals[-1] #the last entry in the tuple is the actual numpy array of values; the first entries store start and end blocks
-        #print('pre-pickle:'+str(task_index)+":"+str(start_index)+":"+str(end_index)+","+"queue size:"+str(write_queue.qsize()))
         payload=pickle.dumps([task_index,start_index,end_index,dict_to_write],pickle.HIGHEST_PROTOCOL)
-        #print("payload size:"+str(sys.getsizeof(payload)))
-        #print("payload pickle length:"+str(len(payload)))
         write_queue.put(payload)
-        #print('pickled:'+str(task_index)+":"+str(start_index)+":"+str(end_index)+","+"queue size:"+str(write_queue.qsize()))
         gc.collect()
     except: 
         kill_child_processes(os.getpid())
